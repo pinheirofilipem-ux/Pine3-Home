@@ -1,6 +1,7 @@
 // Turns the home model and live states into Vidro widgets.
 import type { HassEntities, HassEntity } from "home-assistant-js-websocket";
 import type { Device, Home, Layout, Room } from "../lib/types";
+import { locale, tr, trn, trNames } from "../lib/i18n";
 
 export type Kind = "room-lights" | "scene" | "camera" | "clock" | "light" | "climate" | "weather" | "lock" | "cover" | "media" | "vacuum" | "scenes" | "fan" | "switch" | "outlet" | "sensor" | "binary";
 export type Size = "s" | "m" | "l" | "xl"; // 1x1, 2x1, 2x2, 3x2 on a 6-column grid
@@ -68,7 +69,7 @@ export function homeWidgets(home: Home, e: HassEntities): Widget[] {
     if (lights.length) out.push({ key: `room-${r.id}`, kind: "room-lights", size: i === 0 ? "m" : "s", name: r.name, entities: lights, room: r });
   });
   of("climate").forEach(({ d, r }, i) => out.push({ key: d.id, kind: "climate", size: i === 0 ? "l" : "m", name: d.name, sub: r.name, entity: d.id, room: r }));
-  if (home.weather && e[home.weather]) out.push({ key: home.weather, kind: "weather", size: "l", name: "Tempo", entity: home.weather });
+  if (home.weather && e[home.weather]) out.push({ key: home.weather, kind: "weather", size: "l", name: tr("Tempo"), entity: home.weather });
   of("lock").forEach(({ d, r }) => out.push({ key: d.id, kind: "lock", size: "s", name: d.name, sub: r.name, entity: d.id, room: r }));
   of("cover").forEach(({ d, r }) => out.push({ key: d.id, kind: "cover", size: "s", name: d.name, sub: r.name, entity: d.id, room: r }));
   // media: what is playing first, then the rest
@@ -77,19 +78,19 @@ export function homeWidgets(home: Home, e: HassEntities): Widget[] {
     .slice(0, 2)
     .forEach(({ d, r }) => out.push({ key: d.id, kind: "media", size: "m", name: d.name, sub: r.name, entity: d.id, room: r }));
   of("vacuum").forEach(({ d, r }) => out.push({ key: d.id, kind: "vacuum", size: "s", name: d.name, sub: r.name, entity: d.id, room: r }));
-  if (home.scenes.length) out.push({ key: "scenes", kind: "scenes", size: "m", name: "Cenas", entities: home.scenes.slice(0, 6) });
+  if (home.scenes.length) out.push({ key: "scenes", kind: "scenes", size: "m", name: tr("Cenas"), entities: home.scenes.slice(0, 6) });
   return out;
 }
 
 /** A room's view, grouped by category for the filter chips. */
-export const CATEGORIES: Array<{ id: string; name: string; kinds: Kind[] }> = [
+export const CATEGORIES: Array<{ id: string; name: string; kinds: Kind[] }> = trNames([
   { id: "all", name: "Tudo", kinds: [] },
   { id: "lights", name: "Luzes", kinds: ["light"] },
   { id: "climate", name: "Clima", kinds: ["climate", "fan"] },
   { id: "covers", name: "Estores", kinds: ["cover"] },
   { id: "media", name: "Média", kinds: ["media"] },
   { id: "other", name: "Outros", kinds: ["switch", "outlet", "lock", "vacuum", "sensor", "binary", "camera"] },
-];
+]);
 
 export function roomWidgets(room: Room, shown: string[] = []): Widget[] {
   const devices = room.devices.filter((d) => !d.hidden).map((d) => deviceWidget(d, room));
@@ -112,12 +113,12 @@ export function summary(home: Home, e: HassEntities) {
   return {
     lightsOn,
     alerts: unlocked + open,
-    alertText: unlocked ? `${unlocked} destrancada${unlocked > 1 ? "s" : ""}` : open ? `${open} aberta${open > 1 ? "s" : ""}` : "tudo fechado",
+    alertText: unlocked ? trn(unlocked, "{n} destrancada", "{n} destrancadas") : open ? trn(open, "{n} aberta", "{n} abertas") : tr("tudo fechado"),
     temp: temps.length ? `${Math.round(Math.min(...temps))}–${Math.round(Math.max(...temps))}°` : null,
   };
 }
 
-export const fmt = (n: number, digits = 1) => n.toLocaleString("pt-PT", { maximumFractionDigits: digits });
+export const fmt = (n: number, digits = 1) => n.toLocaleString(locale(), { maximumFractionDigits: digits });
 
 const OPENINGS = ["door", "window", "garage_door", "opening"];
 const visibleDevices = (home: Home) =>
@@ -128,7 +129,7 @@ export function climateWidgets(home: Home, e: HassEntities): Widget[] {
   const out: Widget[] = [];
   const all = visibleDevices(home);
   all.filter(({ d }) => domainOf(d.id) === "climate").forEach(({ d, r }) => out.push({ key: d.id, kind: "climate", size: "l", name: d.name, sub: r.name, entity: d.id, room: r }));
-  if (home.weather && e[home.weather]) out.push({ key: home.weather, kind: "weather", size: "l", name: "Tempo", entity: home.weather });
+  if (home.weather && e[home.weather]) out.push({ key: home.weather, kind: "weather", size: "l", name: tr("Tempo"), entity: home.weather });
   all.filter(({ d }) => domainOf(d.id) === "fan").forEach(({ d, r }) => out.push({ key: d.id, kind: "fan", size: "s", name: d.name, sub: r.name, entity: d.id, room: r }));
   home.rooms.filter((r) => !r.hidden).forEach((r) => {
     if (r.temperature && e[r.temperature]) out.push({ key: `t-${r.id}`, kind: "sensor", size: "s", name: r.name, sub: "temperatura", entity: r.temperature, room: r });
@@ -211,8 +212,8 @@ export function addable(auto: Widget[], layout: Layout, home: Home): Widget[] {
 
 /** "2 de 3 luzes acesas", "luz acesa", "luzes apagadas", "5 dispositivos". */
 export function roomLine(total: number, on: number, devices: number): string {
-  if (!total) return `${devices} dispositivo${devices === 1 ? "" : "s"}`;
-  if (!on) return total === 1 ? "luz apagada" : "luzes apagadas";
-  if (on === total) return total === 1 ? "luz acesa" : `${total} luzes acesas`;
-  return `${on} de ${total} luzes acesas`;
+  if (!total) return trn(devices, "{n} dispositivo", "{n} dispositivos");
+  if (!on) return tr(total === 1 ? "luz apagada" : "luzes apagadas");
+  if (on === total) return total === 1 ? tr("luz acesa") : tr("{n} luzes acesas", { n: total });
+  return tr("{on} de {total} luzes acesas", { on, total });
 }

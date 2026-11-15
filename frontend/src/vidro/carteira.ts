@@ -7,18 +7,19 @@ import { customElement } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { keyed } from "lit/directives/keyed.js";
 import { Pine3Vidro, WEATHER } from "./vidro";
+import { locale, tr, trn, trNames } from "../lib/i18n";
 import { vidroStyles } from "./styles";
 import { domainOf, fmt, roomLights, roomLine, summary } from "./model";
 import { ICONS, roomIcon } from "./icons";
 
 const icon = (path: string) => svg`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d=${path} fill="currentColor"/></svg>`;
-const TABS = [
+const TABS = trNames([
   { id: "home", name: "Casa", color: "#f6d34a", icon: ICONS.home },
   { id: "@divisoes", name: "Divisões", color: "#9fd8b8", icon: ICONS.room },
   { id: "@clima", name: "Clima", color: "#ff8f6b", icon: ICONS.therm },
   { id: "@seguranca", name: "Segurança", color: "#9cc4f2", icon: ICONS.shield },
   { id: "@cenas", name: "Cenas", color: "#f7a98a", icon: ICONS.spark },
-];
+]);
 
 @customElement("pine3-carteira")
 export class Pine3Carteira extends Pine3Vidro {
@@ -30,12 +31,12 @@ export class Pine3Carteira extends Pine3Vidro {
     const tabs = TABS.filter((t) => t.id === "home" || t.id === "@divisoes" || this.viewWidgets(t.id).length);
     const color = (TABS.find((t) => t.id === cur) ?? TABS[0]).color;
     return html`<div class=${classMap({ vd: true, carteira: true, editing: !!this.editing })}>
-      <nav class="stack" aria-label="Vistas">
+      <nav class="stack" aria-label=${tr("Vistas")}>
         ${tabs.map((t) => html`<button class=${classMap({ wtab: true, on: t.id === cur })} style=${`--c:${t.color}`} @click=${() => this.openRoom(t.id)}>
           ${icon(t.icon)}<span>${t.name}</span></button>`)}
         ${this.settingsButton
           ? html`<button class="wtab gear" style="--c:#d6cfc2" @click=${() => this.dispatchEvent(new CustomEvent("pine3-settings", { bubbles: true, composed: true }))}>
-              ${icon(ICONS.gear)}<span>Definições</span></button>`
+              ${icon(ICONS.gear)}<span>${tr("Definições")}</span></button>`
           : nothing}
       </nav>
       <div class="wcard" style=${`--c:${color}`}>
@@ -59,14 +60,14 @@ export class Pine3Carteira extends Pine3Vidro {
     const scenes = [...this.home.scenes, ...this.home.scripts].filter((id) => this.entities[id]).slice(0, 4);
     return html`<div class="front">
       <div class="l">
-        <div class="big">${this.now.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}</div>
-        <span class="date">${this.now.toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" })}</span>
+        <div class="big">${this.now.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" })}</div>
+        <span class="date">${this.now.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" })}</span>
         ${scenes.length
           ? html`<div class="pills">${scenes.map((id) => html`<button class=${classMap({ on: this.flash === id })}
               @click=${() => this.tap({ key: id, kind: "scene", size: "s", name: "", entity: id })}>${(this.entities[id].attributes.friendly_name as string) ?? id}</button>`)}</div>`
           : nothing}
         ${w
-          ? html`<div class="wxg">${t != null ? `${Math.round(t)}°` : ""}<small>${WEATHER[w.state] ?? w.state}${top ? ` · aviso ${top.awarenessTypeName.toLowerCase()}` : ""}</small></div>`
+          ? html`<div class="wxg">${t != null ? `${Math.round(t)}°` : ""}<small>${WEATHER[w.state] ?? w.state}${top ? ` · ${tr("aviso {type}", { type: tr(top.awarenessTypeName).toLowerCase() })}` : ""}</small></div>`
           : nothing}
       </div>
       ${this.renderRows(false)}
@@ -79,7 +80,7 @@ export class Pine3Carteira extends Pine3Vidro {
     const lock = this.home.rooms.flatMap((r) => r.devices).find((d) => !d.hidden && domainOf(d.id) === "lock");
     const ls = lock ? this.entities[lock.id] : undefined;
     return html`<div class=${classMap({ rows: true, full })}>
-      ${full ? html`<div class="rtop"><b>Divisões</b><span>${summary(this.home, this.entities).lightsOn} luzes acesas</span></div>` : nothing}
+      ${full ? html`<div class="rtop"><b>${tr("Divisões")}</b><span>${trn(summary(this.home, this.entities).lightsOn, "{n} luz acesa", "{n} luzes acesas")}</span></div>` : nothing}
       ${rooms.map((r) => {
         const lights = roomLights(r);
         const on = lights.filter((id) => this.entities[id]?.state === "on").length;
@@ -88,15 +89,15 @@ export class Pine3Carteira extends Pine3Vidro {
           <button class="rn" @click=${() => this.openRoom(r.id)}>${full ? icon(roomIcon(r.icon)) : nothing}<span><b>${r.name}</b>
             <small>${roomLine(lights.length, on, r.devices.length)}${Number.isNaN(tt) ? "" : ` · ${fmt(tt)}°`}</small></span></button>
           ${lights.length
-            ? html`<button class=${classMap({ tg: true, on: on > 0 })} role="switch" aria-checked=${on > 0} aria-label=${`Luzes de ${r.name}`}
+            ? html`<button class=${classMap({ tg: true, on: on > 0 })} role="switch" aria-checked=${on > 0} aria-label=${tr("Luzes de {room}", { room: r.name })}
                 @click=${() => this.call("light", on ? "turn_off" : "turn_on", lights)}><i></i></button>`
             : nothing}
         </div>`;
       })}
       ${lock && ls
         ? html`<div class="rowg">
-            <span class="rn"><span><b>${lock.name}</b><small>${ls.state === "locked" ? "trancada" : "destrancada · tocar para trancar"}</small></span></span>
-            <button class=${classMap({ tg: true, on: ls.state === "locked" })} role="switch" aria-checked=${ls.state === "locked"} aria-label=${`Trancar ${lock.name}`}
+            <span class="rn"><span><b>${lock.name}</b><small>${ls.state === "locked" ? tr("trancada") : tr("destrancada · tocar para trancar")}</small></span></span>
+            <button class=${classMap({ tg: true, on: ls.state === "locked" })} role="switch" aria-checked=${ls.state === "locked"} aria-label=${tr("Trancar {name}", { name: lock.name })}
               @click=${() => (ls.state === "locked" ? (this.sheet = lock.id) : this.call("lock", "lock", lock.id))}><i></i></button>
           </div>`
         : nothing}

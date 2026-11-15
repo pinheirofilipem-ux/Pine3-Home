@@ -16,6 +16,7 @@ Uma app para o Home Assistant com vários painéis para a casa, e uma página le
   - **Sistema**.
 - **O tipo de cada cartão** (luz de teto, candeeiro, fita LED, spot, lâmpada, TV, Apple TV, HomePod…): adivinhado pelo nome e pelo modelo, como no Pine3 View, e corrigível na folha do próprio cartão ("Este cartão": tipo, nome, esconder) ou em Entidades. O desenho do cartão segue o tipo.
 - **No Vidro**, os atalhos no topo (Clima, Luzes, Segurança, Cenas) abrem essas vistas, e a dock fica só com a casa e as divisões. Tocar num cartão de divisão abre a divisão; as luzes acendem e apagam no botão ⏻ do cartão. O tempo mostra as próximas 6 horas e os próximos 5 dias.
+- **Português ou inglês**: em ⚙ → Casa → Idioma (automático segue o idioma do Home Assistant). Vale para os painéis, os ecrãs e as definições.
 - **Página para ecrãs** em `http://<home-assistant>:8123/pine3/ecra`: não carrega o frontend do Home Assistant, por isso é rápida em tablets modestos como o Samsung Galaxy Tab A7. Também tem o ⚙, que pede o **PIN das definições** (definido em ⚙ → Sistema, no Home Assistant) e depois abre as mesmas definições, durante 10 minutos.
 - **Emparelhar sem palavra-passe**:
   1. O ecrã mostra um código de 6 algarismos e um QR.

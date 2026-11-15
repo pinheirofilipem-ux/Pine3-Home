@@ -5,6 +5,7 @@ import { html, nothing, css } from "lit";
 import { customElement } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { Pine3Vidro } from "./vidro";
+import { locale, tr, trNames } from "../lib/i18n";
 import { vidroStyles } from "./styles";
 import { homeWidgets, roomLights, roomLine, summary, fmt, type Widget } from "./model";
 import { ICONS, roomIcon } from "./icons";
@@ -12,13 +13,13 @@ import { svg } from "lit";
 
 const icon = (path: string) => svg`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d=${path} fill="currentColor"/></svg>`;
 
-const PILLS = [
+const PILLS = trNames([
   { id: "home", name: "Casa", color: "#ffd166", icon: ICONS.home },
   { id: "@divisoes", name: "Divisões", color: "#d9f2e3", icon: ICONS.room },
   { id: "@clima", name: "Clima", color: "#ffb08a", icon: ICONS.therm },
   { id: "@seguranca", name: "Segurança", color: "#bfe0ff", icon: ICONS.shield },
   { id: "@cenas", name: "Cenas", color: "#ffd0c2", icon: ICONS.spark },
-];
+]);
 const ROOM_COLORS = ["#ffd166", "#d9f2e3", "#c9b8ff", "#ffd0c2", "#bfe0ff", "#ffb08a", "#e9f5a8"];
 const CLOCK: Widget = { key: "clock", kind: "clock", size: "l", name: "" };
 
@@ -46,7 +47,7 @@ export class Pine3Bento extends Pine3Vidro {
     const inRoom = this.home.rooms.some((r) => r.id === this.view);
     const alerts = summary(this.home, this.entities).alerts;
     const shown = PILLS.filter((p) => p.id === "home" || p.id === "@divisoes" || this.viewWidgets(p.id).length);
-    return html`<nav class="bnav" aria-label="Vistas">
+    return html`<nav class="bnav" aria-label=${tr("Vistas")}>
       ${shown.map((p) => {
         const on = this.view === p.id || (p.id === "@divisoes" && inRoom);
         return html`<button class=${classMap({ on })} style=${`--c:${p.color}`} @click=${() => this.openRoom(p.id)}>
@@ -55,7 +56,7 @@ export class Pine3Bento extends Pine3Vidro {
       })}
       ${this.view === "home" ? html`<span class="btools">${this.editControls("home", [CLOCK, ...homeWidgets(this.home, this.entities)])}</span>` : nothing}
       ${this.renderGear("bgear")}
-      <span class="clk">${this.now.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}</span>
+      <span class="clk">${this.now.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" })}</span>
     </nav>`;
   }
 

@@ -19,6 +19,7 @@ import { STYLE_SELECTOR, styleTag } from "./lib/styles";
 import type { Pine3Vidro } from "./vidro/vidro";
 import { applyBrightness, bridge, onWallpanel } from "./lib/wallpanel";
 import type { Dashboard, Home, Me } from "./lib/types";
+import { setLang, tr } from "./lib/i18n";
 import "./settings";
 
 type Phase = "starting" | "pairing" | "connecting" | "ready" | "error";
@@ -139,7 +140,7 @@ export class Pine3Screen extends LitElement {
       this.pair = await startPairing();
       this.poll();
     } catch (err) {
-      this.error = (err as Error).message === "too_many" ? "Há demasiados códigos à espera. Tenta daqui a pouco." : "Não foi possível pedir um código.";
+      this.error = (err as Error).message === "too_many" ? tr("Há demasiados códigos à espera. Tenta daqui a pouco.") : tr("Não foi possível pedir um código.");
       this.pollTimer = window.setTimeout(() => this.beginPairing(), 10_000);
     }
   }
@@ -200,7 +201,7 @@ export class Pine3Screen extends LitElement {
         return;
       }
       this.phase = "error";
-      this.error = "Sem ligação ao Home Assistant. A tentar de novo…";
+      this.error = tr("Sem ligação ao Home Assistant. A tentar de novo…");
       this.errorDetail = describe(err);
       console.warn("Pine3 Home: connect", err);
       this.pollTimer = window.setTimeout(() => this.connect(token), 5000);
@@ -221,10 +222,10 @@ export class Pine3Screen extends LitElement {
       <div class="pane pairing">
         <div class="text">
           <span class="muted eyebrow">Pine3 Home</span>
-          <h1>Emparelhar este ecrã</h1>
-          <p class="muted">No Home Assistant, abre <strong>Pine3 Home</strong> e escreve este código, ou lê o QR com o telemóvel.</p>
+          <h1>${tr("Emparelhar este ecrã")}</h1>
+          <p class="muted">${tr("No Home Assistant, abre")} <strong>Pine3 Home</strong> ${tr("e escreve este código, ou lê o QR com o telemóvel.")}</p>
           <div class="code" aria-live="polite">${code ? `${code.slice(0, 3)} ${code.slice(3)}` : "··· ···"}</div>
-          ${this.error ? html`<p class="bad">${this.error}</p>` : html`<p class="muted small">O código muda a cada 10 minutos.</p>`}
+          ${this.error ? html`<p class="bad">${this.error}</p>` : html`<p class="muted small">${tr("O código muda a cada 10 minutos.")}</p>`}
         </div>
         ${code ? html`<div class="qr">${this.qr(code)}</div>` : nothing}
       </div>
@@ -243,10 +244,10 @@ export class Pine3Screen extends LitElement {
         this.elevatedUntil = Math.max(this.elevatedUntil, Date.now() + 60_000);
         return this.openSettings();
       }
-      if (!st.set) this.pinError = "Ainda não há PIN. Define-o no Home Assistant: Pine3 Home → ⚙ → Sistema.";
-      else if (st.locked_for) this.pinError = `Demasiadas tentativas. Tenta de novo daqui a ${Math.ceil(st.locked_for / 60)} min.`;
+      if (!st.set) this.pinError = tr("Ainda não há PIN. Define-o no Home Assistant: Pine3 Home → ⚙ → Sistema.");
+      else if (st.locked_for) this.pinError = tr("Demasiadas tentativas. Tenta de novo daqui a {n} min.", { n: Math.ceil(st.locked_for / 60) });
     } catch {
-      this.pinError = "Sem ligação ao Home Assistant.";
+      this.pinError = tr("Sem ligação ao Home Assistant.");
     }
     this.settings = "pin";
   }
@@ -259,7 +260,9 @@ export class Pine3Screen extends LitElement {
       this.elevatedUntil = Date.now() + r.minutes * 60_000;
       await this.openSettings();
     } catch (err) {
-      this.pinError = (err as { message?: string }).message ?? "PIN errado.";
+      const e = err as { code?: string; message?: string };
+      const n = e.message?.match(/\d+/)?.[0];
+      this.pinError = e.code === "locked" && n ? tr("Demasiadas tentativas. Tenta de novo daqui a {n} min.", { n }) : e.code === "wrong_pin" || !e.message ? tr("PIN errado.") : tr(e.message);
       this.pin = "";
     } finally {
       this.pinBusy = false;
@@ -300,21 +303,21 @@ export class Pine3Screen extends LitElement {
   private renderPin() {
     const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "del", "0", "ok"];
     return html`<div class="pinwrap">
-      <div class="pinbox pane" role="dialog" aria-label="PIN das definições">
-        <span class="eyebrow muted">Definições</span>
-        <h2>Escreve o PIN</h2>
+      <div class="pinbox pane" role="dialog" aria-label=${tr("PIN das definições")}>
+        <span class="eyebrow muted">${tr("Definições")}</span>
+        <h2>${tr("Escreve o PIN")}</h2>
         <div class="dots" aria-live="polite">${[0, 1, 2, 3, 4, 5, 6, 7].slice(0, Math.max(4, this.pin.length)).map((i) => html`<i class=${i < this.pin.length ? "on" : ""}></i>`)}</div>
         <p class="perr" role="alert">${this.pinError}</p>
         <div class="pad">${keys.map((k) => html`<button class=${k === "ok" ? "primary" : ""} ?disabled=${k === "ok" && (this.pin.length < 4 || this.pinBusy)}
-          aria-label=${k === "del" ? "Apagar" : k === "ok" ? "Entrar" : k} @click=${() => this.key(k)}>${k === "del" ? "⌫" : k === "ok" ? "OK" : k}</button>`)}</div>
-        <button class="cancel" @click=${() => (this.settings = "closed")}>Cancelar</button>
+          aria-label=${k === "del" ? tr("Apagar") : k === "ok" ? tr("Entrar") : k} @click=${() => this.key(k)}>${k === "del" ? "⌫" : k === "ok" ? "OK" : k}</button>`)}</div>
+        <button class="cancel" @click=${() => (this.settings = "closed")}>${tr("Cancelar")}</button>
       </div>
     </div>`;
   }
 
   private renderReady() {
     const me = this.me!;
-    if (!this.home || !this.conn) return html`<main class="center"><p class="muted">A carregar a casa…</p></main>`;
+    if (!this.home || !this.conn) return html`<main class="center"><p class="muted">${tr("A carregar a casa…")}</p></main>`;
     // the styles that exist so far; the others show Vidro until they arrive
     const tag = styleTag(me.dashboard.style);
     return html`${shtml`<${tag} .home=${this.home} .entities=${this.entities} .dashboard=${me.dashboard} .conn=${this.conn}
@@ -330,6 +333,8 @@ export class Pine3Screen extends LitElement {
 
 
   render() {
+    // the house's language, or (automatic) Home Assistant's; before connecting, the tablet's
+    setLang(this.home?.settings?.language, this.home?.language);
     switch (this.phase) {
       case "pairing":
         return this.renderPairing();
@@ -338,7 +343,7 @@ export class Pine3Screen extends LitElement {
       case "error":
         return html`<main class="center"><div class="errbox"><p class="muted">${this.error}</p>${this.errorDetail ? html`<p class="detail">${this.errorDetail}</p>` : nothing}</div></main>`;
       default:
-        return html`<main class="center"><p class="muted">A ligar…</p></main>`;
+        return html`<main class="center"><p class="muted">${tr("A ligar…")}</p></main>`;
     }
   }
 
@@ -492,7 +497,7 @@ declare global {
 
 /** A short description of a connection error, shown small under the message (helps when reporting a problem). */
 function describe(err: unknown): string {
-  if (typeof err === "number") return `erro ${err}`;
+  if (typeof err === "number") return `${tr("erro")} ${err}`;
   if (err && typeof err === "object") {
     const e = err as { code?: unknown; message?: unknown };
     return [e.code, e.message].filter(Boolean).join(": ");

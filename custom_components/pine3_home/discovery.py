@@ -338,4 +338,6 @@ def build_home(hass: HomeAssistant, settings: dict[str, Any]) -> dict[str, Any]:
         "weather": next((s.entity_id for s in hass.states.async_all("weather")), None),
         "persons": [s.entity_id for s in hass.states.async_all("person")],
         "settings": settings,
+        # Home Assistant's own language, for the screens when the language is "auto"
+        "language": hass.config.language,
     }

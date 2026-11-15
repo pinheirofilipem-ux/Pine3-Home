@@ -162,6 +162,14 @@ async def test_home_settings(hass: HomeAssistant, pine3, hass_ws_client) -> None
     assert (await admin.receive_json())["result"]["settings"]["ipma_area"] == "LSB"
     await admin.send_json({"id": 3, "type": "pine3_home/home/settings", "ipma_area": "lisboa"})
     assert not (await admin.receive_json())["success"]
+    # the language: automatic (Home Assistant's), Portuguese or English
+    await admin.send_json({"id": 4, "type": "pine3_home/home/settings", "language": "en"})
+    assert (await result(admin, 4))["result"]["settings"]["language"] == "en"
+    await admin.send_json({"id": 5, "type": "pine3_home/home"})
+    home = (await result(admin, 5))["result"]
+    assert home["settings"]["language"] == "en" and home["language"] == hass.config.language
+    await admin.send_json({"id": 6, "type": "pine3_home/home/settings", "language": "fr"})
+    assert not (await result(admin, 6))["success"]
 
 
 async def test_entities_and_rooms_settings(hass: HomeAssistant, pine3, hass_ws_client) -> None:

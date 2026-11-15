@@ -6,19 +6,20 @@ import { css, html, nothing, svg } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { Pine3Vidro, WEATHER } from "./vidro";
+import { locale, tr, trn, trNames } from "../lib/i18n";
 import { vidroStyles } from "./styles";
 import { brightness, domainOf, fmt, lightColor, roomLights, roomLine, summary } from "./model";
 import { ICONS, roomIcon } from "./icons";
 import type { Room } from "../lib/types";
 
 const icon = (path: string) => svg`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d=${path} fill="currentColor"/></svg>`;
-const VIEWS = [
+const VIEWS = trNames([
   { id: "home", name: "Casa", icon: ICONS.home },
   { id: "@divisoes", name: "Divisões", icon: ICONS.room },
   { id: "@clima", name: "Clima", icon: ICONS.therm },
   { id: "@seguranca", name: "Segurança", icon: ICONS.shield },
   { id: "@cenas", name: "Cenas", icon: ICONS.spark },
-];
+]);
 
 @customElement("pine3-orbita")
 export class Pine3Orbita extends Pine3Vidro {
@@ -50,8 +51,8 @@ export class Pine3Orbita extends Pine3Vidro {
       ${this.wheel ? this.renderWheel(cur) : nothing}
       ${this.editing
         ? nothing
-        : html`<button class="hub" aria-label="Mudar de vista" aria-expanded=${this.wheel} @click=${() => (this.wheel = !this.wheel)}>
-            <i>${icon(this.wheel ? ICONS.close : v.icon)}</i><span><b>${room ? room.name : v.name}</b><small>toca para mudar de vista</small></span>
+        : html`<button class="hub" aria-label=${tr("Mudar de vista")} aria-expanded=${this.wheel} @click=${() => (this.wheel = !this.wheel)}>
+            <i>${icon(this.wheel ? ICONS.close : v.icon)}</i><span><b>${room ? room.name : v.name}</b><small>${tr("toca para mudar de vista")}</small></span>
           </button>`}
       ${this.sheet ? this.renderSheet(this.sheet) : nothing}
     </div>`;
@@ -60,7 +61,7 @@ export class Pine3Orbita extends Pine3Vidro {
   /** The views on a half wheel above the hub (and the ⚙ when this dashboard has it). */
   private renderWheel(cur: string) {
     const items: Array<{ id: string; name: string; icon: string }> = [...this.views];
-    if (this.settingsButton) items.push({ id: "@settings", name: "Definições", icon: ICONS.gear });
+    if (this.settingsButton) items.push({ id: "@settings", name: tr("Definições"), icon: ICONS.gear });
     const n = items.length;
     return html`<div class="radial" @click=${(e: Event) => { if (e.target === e.currentTarget) this.wheel = false; }}>
       ${items.map((it, k) => {
@@ -90,10 +91,10 @@ export class Pine3Orbita extends Pine3Vidro {
     const top = this.warnings[0];
     return html`<div class="sky">
       <div class="core">
-        <b>${this.now.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}</b>
-        <span>${this.now.toLocaleDateString("pt-PT", { weekday: "long" })}${w ? ` · ${t != null ? `${Math.round(t)}° ` : ""}${WEATHER[w.state] ?? w.state}` : ""}</span>
-        <span>${s.lightsOn ? `${s.lightsOn} luz${s.lightsOn > 1 ? "es" : ""} acesa${s.lightsOn > 1 ? "s" : ""}` : "tudo apagado"}</span>
-        ${top ? html`<span class=${`ipma ${top.awarenessLevelID}`}><i></i>${top.awarenessTypeName.toLowerCase()}</span>` : nothing}
+        <b>${this.now.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" })}</b>
+        <span>${this.now.toLocaleDateString(locale(), { weekday: "long" })}${w ? ` · ${t != null ? `${Math.round(t)}° ` : ""}${WEATHER[w.state] ?? w.state}` : ""}</span>
+        <span>${s.lightsOn ? trn(s.lightsOn, "{n} luz acesa", "{n} luzes acesas") : tr("tudo apagado")}</span>
+        ${top ? html`<span class=${`ipma ${top.awarenessLevelID}`}><i></i>${tr(top.awarenessTypeName).toLowerCase()}</span>` : nothing}
       </div>
       ${this.ring(rooms, climate && cs ? climate.id : null, lock && ls ? lock.id : null)}
     </div>`;
@@ -121,7 +122,7 @@ export class Pine3Orbita extends Pine3Vidro {
       items.splice(Math.min(1, items.length), 0, {
         key: climateId,
         render: (x, y) => html`<button class=${classMap({ orb: true, ac: cs.state !== "off" })} style=${`left:${x}%;top:${y}%;--s:calc(var(--u) * 8)`} @click=${() => this.openRoom("@clima")}>
-          ${icon(ICONS.therm)}<b>${cs.state === "off" ? "Off" : `${fmt((cs.attributes.temperature as number) ?? 0)}°`}</b><span>clima</span></button>`,
+          ${icon(ICONS.therm)}<b>${cs.state === "off" ? "Off" : `${fmt((cs.attributes.temperature as number) ?? 0)}°`}</b><span>${tr("clima")}</span></button>`,
       });
     }
     if (lockId) {
@@ -130,7 +131,7 @@ export class Pine3Orbita extends Pine3Vidro {
         key: lockId,
         render: (x, y) => html`<button class=${classMap({ orb: true, alert: ls.state === "unlocked" })} style=${`left:${x}%;top:${y}%;--s:calc(var(--u) * 8)`}
           @click=${() => (ls.state === "locked" ? (this.sheet = lockId) : this.call("lock", "lock", lockId))}>
-          ${icon(ls.state === "locked" ? ICONS.lock : ICONS.unlock)}<b>Porta</b><span>${ls.state === "locked" ? "trancada" : "trancar"}</span></button>`,
+          ${icon(ls.state === "locked" ? ICONS.lock : ICONS.unlock)}<b>${tr("Porta")}</b><span>${ls.state === "locked" ? tr("trancada") : tr("trancar")}</span></button>`,
       });
     }
     const n = items.length;
@@ -144,7 +145,7 @@ export class Pine3Orbita extends Pine3Vidro {
   /** Divisões: every room as an orb, in rows. */
   private renderOrbList() {
     const rooms = this.home.rooms.filter((r) => !r.hidden && r.devices.some((d) => !d.hidden));
-    return html`<div class="rtop"><b>Divisões</b><span>${summary(this.home, this.entities).lightsOn} luzes acesas</span></div>
+    return html`<div class="rtop"><b>${tr("Divisões")}</b><span>${trn(summary(this.home, this.entities).lightsOn, "{n} luz acesa", "{n} luzes acesas")}</span></div>
       <div class="orbs">${rooms.map((r) => {
         const lights = roomLights(r);
         const on = lights.filter((id) => this.entities[id]?.state === "on");

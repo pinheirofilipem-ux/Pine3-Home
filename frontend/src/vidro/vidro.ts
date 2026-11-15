@@ -13,29 +13,30 @@ import {
   type Widget,
 } from "./model";
 import { vidroStyles } from "./styles";
+import { locale, tr, trMap, trn, trNames } from "../lib/i18n";
 
 const LONG_PRESS = 550;
 const DRAG_START = 10;
-const HVAC: Record<string, string> = { heat: "Calor", cool: "Frio", heat_cool: "Auto", auto: "Auto", dry: "Seco", fan_only: "Ventilar", off: "Off" };
-const ACTION: Record<string, string> = { heating: "a aquecer", cooling: "a arrefecer", idle: "em pausa", off: "desligado", drying: "a secar", fan: "a ventilar" };
-export const WEATHER: Record<string, string> = {
+const HVAC: Record<string, string> = trMap({ heat: "Calor", cool: "Frio", heat_cool: "Auto", auto: "Auto", dry: "Seco", fan_only: "Ventilar", off: "Off" });
+const ACTION: Record<string, string> = trMap({ heating: "a aquecer", cooling: "a arrefecer", idle: "em pausa", off: "desligado", drying: "a secar", fan: "a ventilar" });
+export const WEATHER: Record<string, string> = trMap({
   "clear-night": "céu limpo", cloudy: "nublado", fog: "nevoeiro", hail: "granizo", lightning: "trovoada", "lightning-rainy": "trovoada e chuva",
   partlycloudy: "pouco nublado", pouring: "chuva forte", rainy: "chuva", snowy: "neve", "snowy-rainy": "chuva e neve", sunny: "sol",
   windy: "vento", "windy-variant": "vento", exceptional: "excecional",
-};
-const VACUUM: Record<string, string> = { cleaning: "a limpar", docked: "na base", returning: "a voltar à base", paused: "em pausa", idle: "parado", error: "erro" };
-const COVER: Record<string, string> = { open: "aberto", closed: "fechado", opening: "a abrir", closing: "a fechar" };
-const LEVELS: Record<string, string> = { yellow: "amarelo", orange: "laranja", red: "vermelho" };
+});
+const VACUUM: Record<string, string> = trMap({ cleaning: "a limpar", docked: "na base", returning: "a voltar à base", paused: "em pausa", idle: "parado", error: "erro" });
+const COVER: Record<string, string> = trMap({ open: "aberto", closed: "fechado", opening: "a abrir", closing: "a fechar" });
+const LEVELS: Record<string, string> = trMap({ yellow: "amarelo", orange: "laranja", red: "vermelho" });
 const LEVEL_RANK: Record<string, number> = { yellow: 1, orange: 2, red: 3 };
 const HISTORY_TTL = 10 * 60_000;
 const IPMA_TTL = 10 * 60_000;
 /** Views that aren't rooms. */
-const VIEWS = [
+const VIEWS = trNames([
   { id: "@luzes", name: "Luzes", icon: ICONS.bulb },
   { id: "@clima", name: "Clima", icon: ICONS.therm },
   { id: "@seguranca", name: "Segurança", icon: ICONS.shield },
   { id: "@cenas", name: "Cenas", icon: ICONS.spark },
-] as const;
+] as const);
 
 interface IpmaWarning {
   text: string;
@@ -342,9 +343,9 @@ export class Pine3Vidro extends LitElement {
   /** The ⚙: asks the page around the dashboard to open the settings. */
   protected renderGear(cls = "di gear") {
     if (!this.settingsButton) return nothing;
-    return html`<button class=${cls} aria-label="Definições" title="Definições"
+    return html`<button class=${cls} aria-label=${tr("Definições")} title=${tr("Definições")}
       @click=${() => this.dispatchEvent(new CustomEvent("pine3-settings", { bubbles: true, composed: true }))}>
-      ${icon(ICONS.gear)}${cls.includes("di") ? html`<span class="lb">Definições</span>` : nothing}</button>`;
+      ${icon(ICONS.gear)}${cls.includes("di") ? html`<span class="lb">${tr("Definições")}</span>` : nothing}</button>`;
   }
 
   // ---------- editing the layout ----------
@@ -379,7 +380,7 @@ export class Pine3Vidro extends LitElement {
       this.stopEdit();
     } catch (err) {
       console.warn("Pine3 Home: layout", err);
-      alert("Não foi possível guardar. Este ecrã pode não ter permissão para editar este painel.");
+      alert(tr("Não foi possível guardar. Este ecrã pode não ter permissão para editar este painel."));
     } finally {
       this.saving = false;
     }
@@ -426,12 +427,12 @@ export class Pine3Vidro extends LitElement {
   /** The edit buttons of a view: a pencil, or Cancelar / Repor / Concluído while editing. */
   protected editControls(view: string, auto: Widget[]) {
     if (this.editing === view) {
-      return html`<button class="pill" @click=${() => this.stopEdit()}>Cancelar</button>
-        ${this.dashboard.layouts?.[view] ? html`<button class="pill" ?disabled=${this.saving} @click=${() => this.saveLayout(null)}>${icon(ICONS.restore)} Repor</button>` : nothing}
-        <button class="pill pri" ?disabled=${this.saving} @click=${() => this.saveLayout(this.draft)}>${icon(ICONS.check)} Concluído</button>`;
+      return html`<button class="pill" @click=${() => this.stopEdit()}>${tr("Cancelar")}</button>
+        ${this.dashboard.layouts?.[view] ? html`<button class="pill" ?disabled=${this.saving} @click=${() => this.saveLayout(null)}>${icon(ICONS.restore)} ${tr("Repor")}</button>` : nothing}
+        <button class="pill pri" ?disabled=${this.saving} @click=${() => this.saveLayout(this.draft)}>${icon(ICONS.check)} ${tr("Concluído")}</button>`;
     }
     return this.canEdit && !this.editing
-      ? html`<button class="pill icon" aria-label="Editar esta vista" title="Editar" @click=${() => this.startEdit(view, auto)}>${icon(ICONS.edit)}</button>`
+      ? html`<button class="pill icon" aria-label=${tr("Editar esta vista")} title=${tr("Editar")} @click=${() => this.startEdit(view, auto)}>${icon(ICONS.edit)}</button>`
       : nothing;
   }
 
@@ -439,10 +440,10 @@ export class Pine3Vidro extends LitElement {
     if (this.editing !== view || !this.draft) return nothing;
     const options = addable(auto, this.draft, this.home);
     return html`<div class="picker">
-      <div class="phd"><span class="k">Adicionar · toca para pôr no fim</span><span class="k">Arrasta os cartões para mudar a ordem</span></div>
+      <div class="phd"><span class="k">${tr("Adicionar · toca para pôr no fim")}</span><span class="k">${tr("Arrasta os cartões para mudar a ordem")}</span></div>
       <div class="prow">${options.length
         ? options.map((w) => html`<button class="pk" @click=${() => this.addWidget(w)}><span>${w.name}</span><em>${w.room?.name ?? ""}</em></button>`)
-        : html`<span class="k">Já está tudo nesta vista.</span>`}</div>
+        : html`<span class="k">${tr("Já está tudo nesta vista.")}</span>`}</div>
     </div>`;
   }
 
@@ -524,28 +525,28 @@ export class Pine3Vidro extends LitElement {
     const dx = ((m % 7) - 3) * 0.8;
     const dy = ((m % 5) - 2) * 0.8;
     const status = [
-      s.lightsOn ? `${s.lightsOn} luz${s.lightsOn > 1 ? "es" : ""} acesa${s.lightsOn > 1 ? "s" : ""}` : null,
+      s.lightsOn ? trn(s.lightsOn, "{n} luz acesa", "{n} luzes acesas") : null,
       s.alerts ? s.alertText : null,
     ].filter(Boolean);
-    return html`<div class="vd amb" role="button" aria-label="Tocar para acordar">
+    return html`<div class="vd amb" role="button" aria-label=${tr("Tocar para acordar")}>
       <div class="ambc" style=${`transform:translate(calc(var(--u) * ${dx}), calc(var(--u) * ${dy}))`}>
-        <div class="atime">${this.now.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}</div>
-        <div class="adate">${this.now.toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" })}</div>
+        <div class="atime">${this.now.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" })}</div>
+        <div class="adate">${this.now.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" })}</div>
         <div class="arow">
           ${w ? html`<span class="awx">${weatherArt(w.state)}<b>${t != null ? `${Math.round(t)}°` : ""}</b>${WEATHER[w.state] ?? w.state}</span>` : nothing}
-          ${top ? html`<span class=${`ipma ${top.awarenessLevelID}`}><i></i>Aviso ${LEVELS[top.awarenessLevelID] ?? ""} · ${top.awarenessTypeName.toLowerCase()}</span>` : nothing}
+          ${top ? html`<span class=${`ipma ${top.awarenessLevelID}`}><i></i>${tr("Aviso {level}", { level: LEVELS[top.awarenessLevelID] ?? "" })} · ${tr(top.awarenessTypeName).toLowerCase()}</span>` : nothing}
         </div>
-        <div class=${classMap({ astatus: true, att: s.alerts > 0 })}>${status.length ? status.join(" · ") : "Tudo tranquilo em casa"}</div>
+        <div class=${classMap({ astatus: true, att: s.alerts > 0 })}>${status.length ? status.join(" · ") : tr("Tudo tranquilo em casa")}</div>
       </div>
-      <span class="ahint">${this.wallpanel ? "Aproxima-te ou toca para acordar" : "Toca para acordar"}</span>
+      <span class="ahint">${this.wallpanel ? tr("Aproxima-te ou toca para acordar") : tr("Toca para acordar")}</span>
     </div>`;
   }
 
   protected renderDock() {
     const rooms = this.home.rooms.filter((r) => !r.hidden && r.devices.some((d) => !d.hidden));
-    return html`<nav class="dock" aria-label="Vistas">
-      <button class=${classMap({ di: true, on: this.view === "home" })} @click=${() => this.openRoom("home")} aria-label="Casa">
-        ${icon(ICONS.home)}<span class="lb">Casa</span>
+    return html`<nav class="dock" aria-label=${tr("Vistas")}>
+      <button class=${classMap({ di: true, on: this.view === "home" })} @click=${() => this.openRoom("home")} aria-label=${tr("Casa")}>
+        ${icon(ICONS.home)}<span class="lb">${tr("Casa")}</span>
       </button>
       <span class="sep"></span>
       <div class="rooms">
@@ -571,7 +572,7 @@ export class Pine3Vidro extends LitElement {
   protected renderDays(compact: boolean) {
     if (!this.daily.length) return nothing;
     return html`<div class=${classMap({ days: true, compact })}>${this.daily.map((f, i) => html`<div class="day">
-      <span class="dn">${i === 0 ? "Hoje" : ((d) => (compact ? d.slice(0, 3) : d))(new Date(f.datetime).toLocaleDateString("pt-PT", { weekday: "long" }).replace("-feira", ""))}</span>
+      <span class="dn">${i === 0 ? tr("Hoje") : ((d) => (compact ? d.slice(0, 3) : d))(new Date(f.datetime).toLocaleDateString(locale(), { weekday: "long" }).replace("-feira", ""))}</span>
       ${compact ? nothing : html`<span class="dc">${WEATHER[f.condition ?? ""] ?? f.condition ?? ""}</span>`}
       <b>${Math.round(f.temperature)}°</b><span class="lo">${f.templow != null ? `${Math.round(f.templow)}°` : ""}</span>
       ${compact ? nothing : html`<span class="rain">${f.precipitation_probability ? `${f.precipitation_probability}%` : ""}</span>`}
@@ -591,10 +592,10 @@ export class Pine3Vidro extends LitElement {
       <div class="chips">
         ${this.editing
           ? nothing
-          : html`${chip("@clima", "background:#34c759;color:#06210f", ICONS.therm, "Clima", s.temp ?? "")}
-            ${chip("@luzes", "background:#ffcf8a;color:#2a1a04", ICONS.bulb, "Luzes", s.lightsOn ? `${s.lightsOn} acesa${s.lightsOn > 1 ? "s" : ""}` : "apagadas")}
-            ${chip("@seguranca", s.alerts ? "background:#ff8a5c;color:#2a0f04" : "background:#5be3a0;color:#06210f", ICONS.shield, "Segurança", s.alertText)}
-            ${chip("@cenas", "background:#c9b8ff;color:#1d1530", ICONS.spark, "Cenas", `${scenes} cena${scenes === 1 ? "" : "s"}`)}`}
+          : html`${chip("@clima", "background:#34c759;color:#06210f", ICONS.therm, tr("Clima"), s.temp ?? "")}
+            ${chip("@luzes", "background:#ffcf8a;color:#2a1a04", ICONS.bulb, tr("Luzes"), s.lightsOn ? trn(s.lightsOn, "{n} acesa", "{n} acesas") : tr("apagadas"))}
+            ${chip("@seguranca", s.alerts ? "background:#ff8a5c;color:#2a0f04" : "background:#5be3a0;color:#06210f", ICONS.shield, tr("Segurança"), s.alertText)}
+            ${chip("@cenas", "background:#c9b8ff;color:#1d1530", ICONS.spark, tr("Cenas"), trn(scenes, "{n} cena", "{n} cenas"))}`}
         ${controls}
       </div>
     </header>`;
@@ -602,17 +603,17 @@ export class Pine3Vidro extends LitElement {
 
   protected greeting(): string {
     const h = this.now.getHours();
-    const g = h < 6 ? "Boa noite" : h < 13 ? "Bom dia" : h < 20 ? "Boa tarde" : "Boa noite";
-    return `${g} · ${this.now.toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" })}`;
+    const g = tr(h < 6 ? "Boa noite" : h < 13 ? "Bom dia" : h < 20 ? "Boa tarde" : "Boa noite");
+    return `${g} · ${this.now.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" })}`;
   }
 
   protected renderHome() {
-    const time = this.now.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
+    const time = this.now.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
     const auto = homeWidgets(this.home, this.entities);
     const widgets = this.arranged("home", auto);
     const editing = this.editing === "home";
-    return html`${editing ? this.renderHeader("A editar", "Casa", this.editControls("home", auto)) : this.renderHeader(time, this.greeting(), this.editControls("home", auto))}
-      ${widgets.length || editing ? html`<div class=${classMap({ grid: true, edit: editing })}>${widgets.map((w) => this.renderWidget(w))}</div>` : html`<p class="empty">Ainda não há divisões com dispositivos. Atribui áreas aos dispositivos no Home Assistant.</p>`}
+    return html`${editing ? this.renderHeader(tr("A editar"), tr("Casa"), this.editControls("home", auto)) : this.renderHeader(time, this.greeting(), this.editControls("home", auto))}
+      ${widgets.length || editing ? html`<div class=${classMap({ grid: true, edit: editing })}>${widgets.map((w) => this.renderWidget(w))}</div>` : html`<p class="empty">${tr("Ainda não há divisões com dispositivos. Atribui áreas aos dispositivos no Home Assistant.")}</p>`}
       ${this.renderPicker("home", auto)}`;
   }
 
@@ -630,21 +631,21 @@ export class Pine3Vidro extends LitElement {
     const widgets = this.arranged(id, auto);
     const editing = this.editing === id;
     const s = summary(this.home, this.entities);
-    const facts = id === "@luzes" ? (s.lightsOn ? `${s.lightsOn} acesa${s.lightsOn > 1 ? "s" : ""}` : "todas apagadas")
-      : id === "@clima" ? s.temp ?? "" : id === "@seguranca" ? s.alertText : `${widgets.length} cenas e rotinas`;
+    const facts = id === "@luzes" ? (s.lightsOn ? trn(s.lightsOn, "{n} acesa", "{n} acesas") : tr("todas apagadas"))
+      : id === "@clima" ? s.temp ?? "" : id === "@seguranca" ? s.alertText : trn(widgets.length, "{n} cena ou rotina", "{n} cenas e rotinas");
     const lights = id === "@luzes" ? auto.flatMap((w) => w.entities ?? []) : [];
     return html`<div class="rtop">
-        <button class="back" @click=${() => this.openRoom("home")} aria-label="Voltar à casa">${icon(ICONS.back)}</button>
+        <button class="back" @click=${() => this.openRoom("home")} aria-label=${tr("Voltar à casa")}>${icon(ICONS.back)}</button>
         <b>${v.name}</b><span>${editing ? "a editar" : facts}</span>
         <div class="act">
           ${lights.length && !editing
-            ? html`<button class="pill" @click=${() => this.call("light", "turn_on", lights)}>${icon(ICONS.bulb)} Acender todas</button>
-              <button class="pill pri" @click=${() => this.call("light", "turn_off", lights)}>Apagar todas</button>`
+            ? html`<button class="pill" @click=${() => this.call("light", "turn_on", lights)}>${icon(ICONS.bulb)} ${tr("Acender todas")}</button>
+              <button class="pill pri" @click=${() => this.call("light", "turn_off", lights)}>${tr("Apagar todas")}</button>`
             : nothing}
           ${this.editControls(id, auto)}
         </div>
       </div>
-      ${widgets.length || editing ? html`<div class=${classMap({ grid: true, edit: editing })}>${widgets.map((w) => this.renderWidget(w))}</div>` : html`<p class="empty">Nada para mostrar aqui.</p>`}
+      ${widgets.length || editing ? html`<div class=${classMap({ grid: true, edit: editing })}>${widgets.map((w) => this.renderWidget(w))}</div>` : html`<p class="empty">${tr("Nada para mostrar aqui.")}</p>`}
       ${this.renderPicker(id, auto)}`;
   }
 
@@ -661,12 +662,12 @@ export class Pine3Vidro extends LitElement {
     const h = room.humidity ? this.entities[room.humidity]?.state : null;
     const facts = [t && t !== "unavailable" ? `${fmt(parseFloat(t))}°` : null, h && h !== "unavailable" ? `${fmt(parseFloat(h), 0)}%` : null, room.floor].filter(Boolean).join(" · ");
     return html`<div class="rtop">
-        <button class="back" @click=${() => this.openRoom("home")} aria-label="Voltar à casa">${icon(ICONS.back)}</button>
+        <button class="back" @click=${() => this.openRoom("home")} aria-label=${tr("Voltar à casa")}>${icon(ICONS.back)}</button>
         <b>${room.name}</b><span>${editing ? "a editar" : facts}</span>
         <div class="act">
           ${lights.length && !editing
-            ? html`<button class="pill" @click=${() => this.call("light", "turn_on", lights)}>${icon(ICONS.bulb)} Acender</button>
-              <button class="pill pri" @click=${() => this.call("light", "turn_off", lights)}>Apagar</button>`
+            ? html`<button class="pill" @click=${() => this.call("light", "turn_on", lights)}>${icon(ICONS.bulb)} ${tr("Acender")}</button>
+              <button class="pill pri" @click=${() => this.call("light", "turn_off", lights)}>${tr("Apagar")}</button>`
             : nothing}
           ${this.editControls(room.id, auto)}
         </div>
@@ -704,8 +705,8 @@ export class Pine3Vidro extends LitElement {
       <div class="hero" style=${body.heroStyle ?? ""}>${body.hero}${body.small ? html`<small>${body.small}</small>` : nothing}</div>
       ${editing ? nothing : body.ctl ?? nothing}
       ${editing
-        ? html`<button class="rmv" aria-label=${`Esconder ${w.name}`} @click=${() => this.hideWidget(w.key)}>${icon(ICONS.minus)}</button>
-          <button class="handle" aria-label=${`Mudar o tamanho de ${w.name}`} @click=${() => this.resizeWidget(w)}>${icon(ICONS.resize)}<b>${w.size.toUpperCase()}</b></button>`
+        ? html`<button class="rmv" aria-label=${tr("Esconder {name}", { name: w.name })} @click=${() => this.hideWidget(w.key)}>${icon(ICONS.minus)}</button>
+          <button class="handle" aria-label=${tr("Mudar o tamanho de {name}", { name: w.name })} @click=${() => this.resizeWidget(w)}>${icon(ICONS.resize)}<b>${w.size.toUpperCase()}</b></button>`
         : nothing}
     </div>`;
   }
@@ -722,9 +723,9 @@ export class Pine3Vidro extends LitElement {
         const total = w.entities!.length;
         return {
           hero: lvl ? `${lvl}%` : "Off",
-          small: on.length ? `${total > 1 ? `${on.length}/${total} · ` : ""}${on.map((id) => this.name(id, w.room)).slice(0, 2).join(" e ")}` : `${total} luz${total > 1 ? "es" : ""}`,
+          small: on.length ? `${total > 1 ? `${on.length}/${total} · ` : ""}${on.map((id) => this.name(id, w.room)).slice(0, 2).join(tr(" e "))}` : trn(total, "{n} luz", "{n} luzes"),
           art: lightArt(this.typeOf(on[0] ?? w.entities![0]), lvl ?? 0, c), fill: lvl ? lvl : null, color: rgbOf(c), on: lvl! > 0,
-          extra: html`<button class=${classMap({ pw: true, on: on.length > 0 })} aria-label=${`${on.length ? "Apagar" : "Acender"} as luzes de ${w.name}`}
+          extra: html`<button class=${classMap({ pw: true, on: on.length > 0 })} aria-label=${tr(on.length ? "Apagar as luzes de {name}" : "Acender as luzes de {name}", { name: w.name })}
             @click=${() => this.call("light", on.length ? "turn_off" : "turn_on", w.entities!)}>${icon(ICONS.power)}</button>`,
         };
       }
@@ -745,7 +746,7 @@ export class Pine3Vidro extends LitElement {
         const action = ACTION[(s!.attributes.hvac_action as string) ?? mode] ?? HVAC[mode] ?? mode;
         return {
           hero: mode === "off" ? "Off" : t != null ? `${fmt(t)}°` : "—",
-          small: [action, cur != null ? `agora ${fmt(cur)}°` : null].filter(Boolean).join(" · "),
+          small: [action, cur != null ? tr("agora {t}°", { t: fmt(cur) }) : null].filter(Boolean).join(" · "),
           tag: w.sub,
           art: thermo(mode === "off" ? null : t ?? null, color),
           heroStyle: w.size === "l" ? "font-size:calc(var(--u)*7)" : "",
@@ -753,7 +754,7 @@ export class Pine3Vidro extends LitElement {
             ? html`<div class="seg">${modes.map((m) => html`<button class=${classMap({ on: m === mode })} @click=${() => this.call("climate", "set_hvac_mode", w.entity!, { hvac_mode: m })}>${HVAC[m]}</button>`)}</div>`
             : nothing,
           ctl: t != null && mode !== "off"
-            ? html`<div class="ctl"><button aria-label="Baixar" @click=${() => this.stepTemp(w.entity!, -1)}>${icon(ICONS.minus)}</button><button aria-label="Subir" @click=${() => this.stepTemp(w.entity!, 1)}>${icon(ICONS.plus)}</button></div>`
+            ? html`<div class="ctl"><button aria-label=${tr("Baixar")} @click=${() => this.stepTemp(w.entity!, -1)}>${icon(ICONS.minus)}</button><button aria-label=${tr("Subir")} @click=${() => this.stepTemp(w.entity!, 1)}>${icon(ICONS.plus)}</button></div>`
             : nothing,
         };
       }
@@ -764,25 +765,25 @@ export class Pine3Vidro extends LitElement {
         return {
           hero: t != null ? `${Math.round(t)}°` : "—", small: WEATHER[cond] ?? cond, art: weatherArt(cond),
           extra: top
-            ? html`<span class=${`ipma ${top.awarenessLevelID}`}><i></i>Aviso ${LEVELS[top.awarenessLevelID] ?? ""} · ${top.awarenessTypeName.toLowerCase()}${this.warnings.length > 1 ? ` +${this.warnings.length - 1}` : ""}</span>`
+            ? html`<span class=${`ipma ${top.awarenessLevelID}`}><i></i>${tr("Aviso {level}", { level: LEVELS[top.awarenessLevelID] ?? "" })} · ${tr(top.awarenessTypeName).toLowerCase()}${this.warnings.length > 1 ? ` +${this.warnings.length - 1}` : ""}</span>`
             : nothing,
           ctl: html`${this.renderHours()}${w.size === "l" || w.size === "xl" ? this.renderDays(true) : nothing}`,
         };
       }
       case "lock": {
         const open = s!.state !== "locked";
-        return { hero: open ? (s!.state === "unlocked" ? "Destrancada" : s!.state) : "Trancada", small: open ? "tocar para trancar" : "toque longo para abrir", art: lockArt(open), att: s!.state === "unlocked", heroStyle: "font-size:calc(var(--u)*1.85)" };
+        return { hero: open ? (s!.state === "unlocked" ? tr("Destrancada") : s!.state) : tr("Trancada"), small: open ? tr("tocar para trancar") : tr("toque longo para abrir"), art: lockArt(open), att: s!.state === "unlocked", heroStyle: "font-size:calc(var(--u)*1.85)" };
       }
       case "media": {
         const playing = s!.state === "playing";
-        const title = (s!.attributes.media_title as string) ?? (isOn(s) ? "Ligado" : "Desligado");
+        const title = (s!.attributes.media_title as string) ?? (isOn(s) ? tr("Ligado") : tr("Desligado"));
         const artist = (s!.attributes.media_artist as string) ?? (s!.attributes.app_name as string) ?? "";
         return {
           hero: title, small: artist, tag: w.sub, art: album(s!.attributes.entity_picture as string | undefined), on: playing,
           heroStyle: "font-size:calc(var(--u)*2.4)",
           ctl: isOn(s)
-            ? html`<div class="ctl"><button class="pri" aria-label=${playing ? "Pausa" : "Tocar"} @click=${() => this.call("media_player", "media_play_pause", w.entity!)}>${icon(playing ? ICONS.pause : ICONS.play)}</button>
-                <button aria-label="Seguinte" @click=${() => this.call("media_player", "media_next_track", w.entity!)}>${icon(ICONS.next)}</button></div>`
+            ? html`<div class="ctl"><button class="pri" aria-label=${playing ? tr("Pausa") : tr("Tocar")} @click=${() => this.call("media_player", "media_play_pause", w.entity!)}>${icon(playing ? ICONS.pause : ICONS.play)}</button>
+                <button aria-label=${tr("Seguinte")} @click=${() => this.call("media_player", "media_next_track", w.entity!)}>${icon(ICONS.next)}</button></div>`
             : nothing,
         };
       }
@@ -805,7 +806,7 @@ export class Pine3Vidro extends LitElement {
       case "binary": {
         const on = s!.state === "on";
         const dc = s!.attributes.device_class as string | undefined;
-        const word = dc && ["door", "window", "garage_door", "opening"].includes(dc) ? (on ? "Aberta" : "Fechada") : dc === "motion" || dc === "occupancy" ? (on ? "Movimento" : "Calmo") : on ? "On" : "Off";
+        const word = dc && ["door", "window", "garage_door", "opening"].includes(dc) ? (on ? tr("Aberta") : tr("Fechada")) : dc === "motion" || dc === "occupancy" ? (on ? tr("Movimento") : tr("Calmo")) : on ? "On" : "Off";
         return { hero: word, att: on && !!dc && ["door", "window", "garage_door", "opening", "moisture", "smoke", "gas"].includes(dc), heroStyle: "font-size:calc(var(--u)*2.4)" };
       }
       case "sensor": {
@@ -824,11 +825,11 @@ export class Pine3Vidro extends LitElement {
       }
       case "clock":
         return {
-          hero: this.now.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }),
-          small: this.now.toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" }),
+          hero: this.now.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" }),
+          small: this.now.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" }),
         };
       case "scene":
-        return { hero: "", art: sceneArt(), extra: html`<span class="go">${this.flash === w.key ? "Ativada" : "Tocar para ativar"}</span>` };
+        return { hero: "", art: sceneArt(), extra: html`<span class="go">${this.flash === w.key ? tr("Ativada") : tr("Tocar para ativar")}</span>` };
       case "camera": {
         const pic = s!.attributes.entity_picture as string | undefined;
         const t = Math.floor(this.now.getTime() / 10_000);
@@ -866,11 +867,11 @@ export class Pine3Vidro extends LitElement {
     if (!s) return nothing;
     const d = domainOf(id);
     const room = this.home.rooms.find((r) => r.devices.some((x) => x.id === id));
-    const kind = d === "light" ? "luz" : d === "cover" ? "estore" : d === "climate" ? "clima" : d === "lock" ? "fechadura" : d === "media_player" ? "média" : d === "weather" ? "tempo" : "";
+    const kind = tr(d === "light" ? "luz" : d === "cover" ? "estore" : d === "climate" ? "clima" : d === "lock" ? "fechadura" : d === "media_player" ? "média" : d === "weather" ? "tempo" : "");
     return html`<div class="scrim" @click=${() => (this.sheet = null)}></div>
       <aside class="sheet" role="dialog" aria-label=${this.name(id, room)}>
         <div class="shd"><span class="k">${[room?.name, kind].filter(Boolean).join(" · ")}</span>
-          <button class="x" aria-label="Fechar" @click=${() => (this.sheet = null)}>${icon(ICONS.close)}</button></div>
+          <button class="x" aria-label=${tr("Fechar")} @click=${() => (this.sheet = null)}>${icon(ICONS.close)}</button></div>
         <h4>${this.name(id, room)}</h4>
         ${this.sheetBody(id, s)}
         ${this.thisCard(id)}
@@ -925,17 +926,17 @@ export class Pine3Vidro extends LitElement {
     };
     const hidden = (st.hidden ?? []).includes(id);
     return html`<div class="this">
-      <span class="k">Este cartão · vale para todos os estilos e painéis</span>
+      <span class="k">${tr("Este cartão · vale para todos os estilos e painéis")}</span>
       ${types.length > 1
-        ? html`<div class="tchips" role="group" aria-label="Tipo">${types.map((t) => html`<button class=${classMap({ on: t === cur })} aria-pressed=${t === cur}
+        ? html`<div class="tchips" role="group" aria-label=${tr("Tipo")}>${types.map((t) => html`<button class=${classMap({ on: t === cur })} aria-pressed=${t === cur}
             @click=${() => setType(t)}>${icon(DEVICE_TYPES[t].icon)}${DEVICE_TYPES[t].name}</button>`)}</div>
           <span class="auto">${chosen
-            ? html`Escolhido por ti. <button class="lnk" @click=${() => setType(null)}>Voltar ao automático (${DEVICE_TYPES[guessed].name.toLowerCase()})</button>`
-            : `Adivinhado pelo nome e pelo modelo: ${DEVICE_TYPES[guessed].name.toLowerCase()}.`}</span>`
+            ? html`${tr("Escolhido por ti.")} <button class="lnk" @click=${() => setType(null)}>${tr("Voltar ao automático ({type})", { type: DEVICE_TYPES[guessed].name.toLowerCase() })}</button>`
+            : tr("Adivinhado pelo nome e pelo modelo: {type}.", { type: DEVICE_TYPES[guessed].name.toLowerCase() })}</span>`
         : nothing}
-      <label class="fld"><span>Nome</span><input .value=${this.name(id)} maxlength="40" @change=${(e: Event) => setName((e.target as HTMLInputElement).value.trim())} /></label>
-      <div class="fld"><span>Esconder este cartão</span>
-        <button class="sw" role="switch" aria-checked=${hidden} aria-label="Esconder este cartão"
+      <label class="fld"><span>${tr("Nome")}</span><input .value=${this.name(id)} maxlength="40" @change=${(e: Event) => setName((e.target as HTMLInputElement).value.trim())} /></label>
+      <div class="fld"><span>${tr("Esconder este cartão")}</span>
+        <button class="sw" role="switch" aria-checked=${hidden} aria-label=${tr("Esconder este cartão")}
           @click=${() => { this.saveHouse({ hidden: hidden ? (st.hidden ?? []).filter((x) => x !== id) : [...(st.hidden ?? []), id] }); if (!hidden) this.sheet = null; }}></button></div>
     </div>`;
   }
@@ -962,63 +963,63 @@ export class Pine3Vidro extends LitElement {
       const c = lightColor(s);
       const minK = (s.attributes.min_color_temp_kelvin as number) ?? 2200;
       const maxK = (s.attributes.max_color_temp_kelvin as number) ?? 6500;
-      return html`${modes.some((m) => m !== "onoff") ? this.bigSlider(`sheet-${id}`, brightness(s), `linear-gradient(90deg,${c},#fff3e0)`, "Brilho", (v) => (v ? this.call("light", "turn_on", id, { brightness_pct: v }) : this.call("light", "turn_off", id))) : nothing}
-        ${ct ? html`<span class="k">Branco</span><div class="tbar" @click=${(e: MouseEvent) => {
+      return html`${modes.some((m) => m !== "onoff") ? this.bigSlider(`sheet-${id}`, brightness(s), `linear-gradient(90deg,${c},#fff3e0)`, tr("Brilho"), (v) => (v ? this.call("light", "turn_on", id, { brightness_pct: v }) : this.call("light", "turn_off", id))) : nothing}
+        ${ct ? html`<span class="k">${tr("Branco")}</span><div class="tbar" @click=${(e: MouseEvent) => {
             const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
             const f = (e.clientX - r.left) / r.width;
             this.call("light", "turn_on", id, { color_temp_kelvin: Math.round(minK + f * (maxK - minK)) });
           }}></div>` : nothing}
-        ${color ? html`<span class="k">Cores</span><div class="pre">${PRESETS.map((p) => html`<button aria-label=${p} style=${`background:${p}`} class=${classMap({ on: p === c })} @click=${() => this.call("light", "turn_on", id, { rgb_color: hexRgb(p) })}></button>`)}</div>` : nothing}
-        <div class="foot"><button class="pill" @click=${() => this.toggle(id)}>${icon(ICONS.power)} ${s.state === "on" ? "Desligar" : "Ligar"}</button></div>`;
+        ${color ? html`<span class="k">${tr("Cores")}</span><div class="pre">${PRESETS.map((p) => html`<button aria-label=${p} style=${`background:${p}`} class=${classMap({ on: p === c })} @click=${() => this.call("light", "turn_on", id, { rgb_color: hexRgb(p) })}></button>`)}</div>` : nothing}
+        <div class="foot"><button class="pill" @click=${() => this.toggle(id)}>${icon(ICONS.power)} ${s.state === "on" ? tr("Desligar") : tr("Ligar")}</button></div>`;
     }
     if (d === "cover") {
       const pos = (s.attributes.current_position as number | undefined) ?? (s.state === "open" ? 100 : 0);
-      return html`${((s.attributes.supported_features as number) & 4) ? this.bigSlider(`sheet-${id}`, pos, "linear-gradient(90deg,#a9b6c4,#dfe6ee)", "Posição", (v) => this.call("cover", "set_cover_position", id, { position: v })) : nothing}
-        <div class="foot"><button class="pill" @click=${() => this.call("cover", "open_cover", id)}>Abrir</button><button class="pill" @click=${() => this.call("cover", "stop_cover", id)}>Parar</button><button class="pill" @click=${() => this.call("cover", "close_cover", id)}>Fechar</button></div>`;
+      return html`${((s.attributes.supported_features as number) & 4) ? this.bigSlider(`sheet-${id}`, pos, "linear-gradient(90deg,#a9b6c4,#dfe6ee)", tr("Posição"), (v) => this.call("cover", "set_cover_position", id, { position: v })) : nothing}
+        <div class="foot"><button class="pill" @click=${() => this.call("cover", "open_cover", id)}>${tr("Abrir")}</button><button class="pill" @click=${() => this.call("cover", "stop_cover", id)}>${tr("Parar")}</button><button class="pill" @click=${() => this.call("cover", "close_cover", id)}>${tr("Fechar")}</button></div>`;
     }
     if (d === "climate") {
       const t = s.attributes.temperature as number | undefined;
       const modes = (s.attributes.hvac_modes as string[]) ?? [];
       return html`<div class="bigtemp">${t != null ? `${fmt(t)}°` : "—"}<small>${ACTION[(s.attributes.hvac_action as string) ?? s.state] ?? ""}${s.attributes.current_temperature != null ? ` · agora ${fmt(s.attributes.current_temperature as number)}°` : ""}</small></div>
-        <div class="ctl big"><button aria-label="Baixar" @click=${() => this.stepTemp(id, -1)}>${icon(ICONS.minus)}</button><button aria-label="Subir" @click=${() => this.stepTemp(id, 1)}>${icon(ICONS.plus)}</button></div>
-        <span class="k">Modo</span><div class="seg wide">${modes.map((m) => html`<button class=${classMap({ on: m === s.state })} @click=${() => this.call("climate", "set_hvac_mode", id, { hvac_mode: m })}>${HVAC[m] ?? m}</button>`)}</div>`;
+        <div class="ctl big"><button aria-label=${tr("Baixar")} @click=${() => this.stepTemp(id, -1)}>${icon(ICONS.minus)}</button><button aria-label=${tr("Subir")} @click=${() => this.stepTemp(id, 1)}>${icon(ICONS.plus)}</button></div>
+        <span class="k">${tr("Modo")}</span><div class="seg wide">${modes.map((m) => html`<button class=${classMap({ on: m === s.state })} @click=${() => this.call("climate", "set_hvac_mode", id, { hvac_mode: m })}>${HVAC[m] ?? m}</button>`)}</div>`;
     }
     if (d === "lock") {
       const locked = s.state === "locked";
-      return html`<div class="bigtemp">${locked ? "Trancada" : s.state === "unlocked" ? "Destrancada" : s.state}</div>
+      return html`<div class="bigtemp">${locked ? tr("Trancada") : s.state === "unlocked" ? tr("Destrancada") : s.state}</div>
         <div class="foot">${locked
-          ? html`<button class="pill warn" @click=${() => { this.call("lock", "unlock", id); this.sheet = null; }}>${icon(ICONS.unlock)} Destrancar</button>`
-          : html`<button class="pill pri" @click=${() => this.call("lock", "lock", id)}>${icon(ICONS.lock)} Trancar</button>`}</div>`;
+          ? html`<button class="pill warn" @click=${() => { this.call("lock", "unlock", id); this.sheet = null; }}>${icon(ICONS.unlock)} ${tr("Destrancar")}</button>`
+          : html`<button class="pill pri" @click=${() => this.call("lock", "lock", id)}>${icon(ICONS.lock)} ${tr("Trancar")}</button>`}</div>`;
     }
     if (d === "media_player") {
       const vol = Math.round(((s.attributes.volume_level as number | undefined) ?? 0) * 100);
       return html`<div class="bigtemp" style="font-size:calc(var(--u)*2.6)">${(s.attributes.media_title as string) ?? s.state}<small>${(s.attributes.media_artist as string) ?? ""}</small></div>
-        ${s.attributes.volume_level != null ? this.bigSlider(`vol-${id}`, vol, "linear-gradient(90deg,#3db8f5,#9be0ff)", "Volume", (v) => this.call("media_player", "volume_set", id, { volume_level: v / 100 })) : nothing}
-        <div class="foot"><button class="pill pri" @click=${() => this.call("media_player", "media_play_pause", id)}>${icon(s.state === "playing" ? ICONS.pause : ICONS.play)} ${s.state === "playing" ? "Pausa" : "Tocar"}</button>
+        ${s.attributes.volume_level != null ? this.bigSlider(`vol-${id}`, vol, "linear-gradient(90deg,#3db8f5,#9be0ff)", tr("Volume"), (v) => this.call("media_player", "volume_set", id, { volume_level: v / 100 })) : nothing}
+        <div class="foot"><button class="pill pri" @click=${() => this.call("media_player", "media_play_pause", id)}>${icon(s.state === "playing" ? ICONS.pause : ICONS.play)} ${s.state === "playing" ? tr("Pausa") : tr("Tocar")}</button>
           <button class="pill" @click=${() => this.call("media_player", "media_next_track", id)}>${icon(ICONS.next)}</button>
           <button class="pill" @click=${() => this.toggle(id)}>${icon(ICONS.power)}</button></div>`;
     }
     if (d === "camera") {
       const pic = s.attributes.entity_picture as string | undefined;
-      return pic ? html`<img class="camlg" src=${`${pic}${pic.includes("?") ? "&" : "?"}t=${Math.floor(this.now.getTime() / 10_000)}`} alt=${this.name(id)} />` : html`<p class="k">Sem imagem</p>`;
+      return pic ? html`<img class="camlg" src=${`${pic}${pic.includes("?") ? "&" : "?"}t=${Math.floor(this.now.getTime() / 10_000)}`} alt=${this.name(id)} />` : html`<p class="k">${tr("Sem imagem")}</p>`;
     }
     if (d === "weather") {
-      const when = (iso: string) => new Date(iso).toLocaleString("pt-PT", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+      const when = (iso: string) => new Date(iso).toLocaleString(locale(), { weekday: "short", hour: "2-digit", minute: "2-digit" });
       const t = s.attributes.temperature as number | undefined;
       const extra = [
         s.attributes.humidity != null ? `${s.attributes.humidity}%` : null,
-        s.attributes.wind_speed != null ? `vento ${fmt(s.attributes.wind_speed as number, 0)} ${s.attributes.wind_speed_unit ?? ""}` : null,
+        s.attributes.wind_speed != null ? `${tr("vento")} ${fmt(s.attributes.wind_speed as number, 0)} ${s.attributes.wind_speed_unit ?? ""}` : null,
       ].filter(Boolean);
       return html`<div class="bigtemp">${t != null ? `${Math.round(t)}°` : "—"}<small>${[WEATHER[s.state] ?? s.state, ...extra].join(" · ")}</small></div>
-        ${this.hourly.length ? html`<span class="k">Próximas 6 horas</span>${this.renderHours()}` : nothing}
-        ${this.daily.length ? html`<span class="k">Próximos 5 dias</span>${this.renderDays(false)}` : nothing}
-        ${this.warnings.map((w) => html`<div class=${`warn ${w.awarenessLevelID}`}><b>Aviso ${LEVELS[w.awarenessLevelID] ?? ""} · ${w.awarenessTypeName}</b>
+        ${this.hourly.length ? html`<span class="k">${tr("Próximas 6 horas")}</span>${this.renderHours()}` : nothing}
+        ${this.daily.length ? html`<span class="k">${tr("Próximos 5 dias")}</span>${this.renderDays(false)}` : nothing}
+        ${this.warnings.map((w) => html`<div class=${`warn ${w.awarenessLevelID}`}><b>${tr("Aviso {level}", { level: LEVELS[w.awarenessLevelID] ?? "" })} · ${tr(w.awarenessTypeName)}</b>
           <span>${when(w.startTime)} → ${when(w.endTime)}</span>${w.text ? html`<p>${w.text}</p>` : nothing}</div>`)}
-        ${!this.home.settings?.ipma_area ? html`<p class="hint">Escolhe a área do IPMA no painel Pine3 Home para ver os avisos.</p>` : nothing}`;
+        ${!this.home.settings?.ipma_area ? html`<p class="hint">${tr("Escolhe a área do IPMA no painel Pine3 Home para ver os avisos.")}</p>` : nothing}`;
     }
     const unit = (s.attributes.unit_of_measurement as string) ?? "";
     return html`<div class="bigtemp">${s.state}${unit ? ` ${unit}` : ""}</div>
-      ${["switch", "light", "fan", "input_boolean", "vacuum"].includes(d) ? html`<div class="foot"><button class="pill pri" @click=${() => this.toggle(id)}>${icon(ICONS.power)} ${isOn(s) ? "Desligar" : "Ligar"}</button></div>` : nothing}`;
+      ${["switch", "light", "fan", "input_boolean", "vacuum"].includes(d) ? html`<div class="foot"><button class="pill pri" @click=${() => this.toggle(id)}>${icon(ICONS.power)} ${isOn(s) ? tr("Desligar") : tr("Ligar")}</button></div>` : nothing}`;
   }
 
   static styles: CSSResultGroup = vidroStyles;

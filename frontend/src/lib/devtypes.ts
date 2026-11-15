@@ -2,6 +2,7 @@
 // device class, name and device model (as Pine3 View does for its floor plan) and changeable in a card's sheet
 // or in Definições → Entidades. The type sets a card's illustration and icon in every style.
 import type { HassEntity } from "home-assistant-js-websocket";
+import { trName } from "./i18n";
 import {
   mdiCeilingLight, mdiFloorLamp, mdiLedStripVariant, mdiSpotlightBeam, mdiLightbulb, mdiTelevision, mdiTelevisionBox,
   mdiSpeaker, mdiSpeakerWireless, mdiAirConditioner, mdiFan, mdiAirPurifier, mdiBlindsHorizontal, mdiDoor,
@@ -12,7 +13,7 @@ export type DeviceType =
   | "ceiling" | "lamp" | "led" | "spot" | "bulb" | "tv" | "appletv" | "homepod" | "speaker" | "ac" | "fan" | "purifier"
   | "blind" | "door" | "window" | "plug" | "sensor" | "motion" | "camera" | "lock" | "vacuum" | "other";
 
-export const DEVICE_TYPES: Record<DeviceType, { icon: string; name: string }> = {
+const DEVICE_TYPES_PT: Record<DeviceType, { icon: string; name: string }> = {
   ceiling: { icon: mdiCeilingLight, name: "Luz de teto" },
   lamp: { icon: mdiFloorLamp, name: "Candeeiro" },
   led: { icon: mdiLedStripVariant, name: "Fita LED" },
@@ -36,6 +37,9 @@ export const DEVICE_TYPES: Record<DeviceType, { icon: string; name: string }> = 
   vacuum: { icon: mdiRobotVacuum, name: "Aspirador" },
   other: { icon: mdiCircleMedium, name: "Outro" },
 };
+
+/** The types, with their names in the dashboards' language. */
+export const DEVICE_TYPES = Object.fromEntries(Object.entries(DEVICE_TYPES_PT).map(([k, v]) => [k, trName(v)])) as typeof DEVICE_TYPES_PT;
 
 /** The types that make sense for an entity of each domain (the choices in a card's sheet). */
 export const TYPES_FOR: Record<string, DeviceType[]> = {
