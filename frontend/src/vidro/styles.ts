@@ -638,6 +638,92 @@ export const vidroStyles = css`
     background: #ff8a5c;
     color: #2a0f04;
   }
+  /* ---------- "Este cartão" in a sheet ---------- */
+  .this {
+    border-top: 1px solid var(--line);
+    padding-top: calc(var(--u) * 1.2);
+    margin-top: calc(var(--u) * 0.4);
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--u) * 0.9);
+  }
+  .tchips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: calc(var(--u) * 0.5);
+  }
+  .tchips button {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--u) * 0.5);
+    padding: calc(var(--u) * 0.5) calc(var(--u) * 1);
+    border-radius: 99px;
+    background: var(--well);
+    font-size: calc(var(--u) * 1.05);
+  }
+  .tchips button.on {
+    background: var(--fg);
+    color: var(--bg-ink, #17191c);
+    font-weight: 600;
+  }
+  .light .tchips button.on,
+  .bento .tchips button.on,
+  .editorial .tchips button.on,
+  .moldura .tchips button.on {
+    color: #fff;
+  }
+  .auto {
+    font-size: calc(var(--u) * 0.95);
+    color: var(--muted);
+  }
+  .lnk {
+    text-decoration: underline;
+    color: var(--acc);
+  }
+  .fld {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: calc(var(--u) * 1);
+    font-size: calc(var(--u) * 1.1);
+  }
+  .fld input {
+    flex: 1;
+    max-width: 60%;
+    font: inherit;
+    color: inherit;
+    background: var(--well);
+    border: 1px solid var(--line);
+    border-radius: calc(var(--u) * 0.8);
+    padding: calc(var(--u) * 0.5) calc(var(--u) * 0.8);
+  }
+  .fld .sw {
+    width: calc(var(--u) * 4);
+    height: calc(var(--u) * 2.3);
+    border-radius: 99px;
+    background: var(--well);
+    position: relative;
+    flex: none;
+  }
+  .fld .sw::after {
+    content: "";
+    position: absolute;
+    top: calc(var(--u) * 0.25);
+    left: calc(var(--u) * 0.25);
+    width: calc(var(--u) * 1.8);
+    height: calc(var(--u) * 1.8);
+    border-radius: 50%;
+    background: var(--muted);
+    transition: left 0.15s;
+  }
+  .fld .sw[aria-checked="true"] {
+    background: #f2b53c;
+  }
+  .fld .sw[aria-checked="true"]::after {
+    left: calc(var(--u) * 1.95);
+    background: #fff;
+  }
+
   /* ---------- ambient face ---------- */
   .amb {
     background: radial-gradient(70% 60% at 50% 40%, #171a1e 0%, #0b0c0e 70%, #060708 100%);

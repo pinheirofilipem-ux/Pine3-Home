@@ -173,3 +173,15 @@ async def test_entities_and_rooms_settings(hass: HomeAssistant, pine3, hass_ws_c
     # an icon must be an mdi icon name
     await admin.send_json({"id": 2, "type": "pine3_home/home/settings", "room_icons": {"sala": "<svg>"}})
     assert not (await result(admin, 2))["success"]
+
+
+async def test_card_type_and_name(hass: HomeAssistant, pine3, hass_ws_client) -> None:
+    admin = await hass_ws_client(hass)
+    await admin.send_json({"id": 1, "type": "pine3_home/home/settings", "types": {"light.sala_candeeiro": "led"}, "names": {"light.sala_candeeiro": "Fita LED"}})
+    res = (await result(admin, 1))["result"]["settings"]
+    assert res["types"] == {"light.sala_candeeiro": "led"} and res["names"] == {"light.sala_candeeiro": "Fita LED"}
+    # only the known types, for entity ids
+    await admin.send_json({"id": 2, "type": "pine3_home/home/settings", "types": {"light.x": "rocket"}})
+    assert not (await result(admin, 2))["success"]
+    await admin.send_json({"id": 3, "type": "pine3_home/home/settings", "types": {"not an id": "led"}})
+    assert not (await result(admin, 3))["success"]

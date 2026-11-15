@@ -11,6 +11,7 @@ import {
   mdiViewGridOutline, mdiFormatListChecks, mdiChevronUp, mdiChevronDown, mdiMagnify,
 } from "@mdi/js";
 import { ROOM_ICON_CHOICES, roomIconPath } from "./vidro/icons";
+import { DEVICE_TYPES, TYPES_FOR, autoType, type DeviceType } from "./lib/devtypes";
 import { styleTag, STYLE_SWATCH } from "./lib/styles";
 import {
   AMBIENT_AFTER, AMBIENT_BRIGHTNESS, IPMA_AREAS, READY_STYLES, STYLE_NAMES, THEME_NAMES,
@@ -426,12 +427,29 @@ export class Pine3Settings extends LitElement {
       <div class="list">${ents.map((e) => {
         const v = this.visible(e);
         return html`<div class=${classMap({ row: true, off: !v })}>
-          <span class="grow">${e.name}<small class="mono">${e.id}</small></span>
+          <span class="grow">${this.hs.names?.[e.id] ?? e.name}<small class="mono">${e.id}</small></span>
+          ${this.typePicker(r, e)}
           <span class=${classMap({ badge: true, sec: !e.primary })}>${e.primary ? "Principal" : e.category ? "Diagnóstico" : "Secundária"}</span>
           <button class="sw" role="switch" aria-checked=${v} aria-label=${`Mostrar ${e.name}`} @click=${() => this.toggleEntity(e)}></button>
         </div>`;
       })}</div>
     </section>`;
+  }
+
+  /** The card's type (ceiling light, lamp, LED strip…): guessed, or chosen here or in the card's sheet. */
+  private typePicker(r: Room, e: RoomEntity) {
+    const types = TYPES_FOR[e.id.split(".")[0]] ?? [];
+    if (types.length < 2) return nothing;
+    const d = r.devices.find((x) => x.id === e.id);
+    const guessed = autoType(e.id, this.entities[e.id], { name: d?.name ?? e.name, model: d?.model as string | null, manufacturer: d?.manufacturer as string | null });
+    const cur = (this.hs.types?.[e.id] as DeviceType | undefined) ?? guessed;
+    return html`<select class="sel tsel" aria-label=${`Tipo de ${e.name}`} @change=${(ev: Event) => {
+      const t = (ev.target as HTMLSelectElement).value as DeviceType;
+      const next = { ...(this.hs.types ?? {}) };
+      if (t === guessed) delete next[e.id];
+      else next[e.id] = t;
+      void this.saveHouse({ types: next });
+    }}>${types.map((t) => html`<option value=${t} ?selected=${t === cur}>${DEVICE_TYPES[t].name}${t === guessed ? " (automático)" : ""}</option>`)}</select>`;
   }
 
   /** The views the preview can show: Casa, the rooms and the special views. */
@@ -989,6 +1007,10 @@ export class Pine3Settings extends LitElement {
       font-weight: 400;
       font-size: 0.95rem;
       color: #9aa1ab;
+    }
+    .tsel {
+      padding: 0.35rem 0.6rem;
+      font-size: 0.9rem;
     }
     .badge.sec {
       background: rgba(255, 255, 255, 0.07);

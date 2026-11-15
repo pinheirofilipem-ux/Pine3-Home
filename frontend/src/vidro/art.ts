@@ -89,3 +89,44 @@ export function spark(c: string, values?: number[]): SVGTemplateResult {
 export function sceneArt(): SVGTemplateResult {
   return frame(svg`<circle cx="42" cy="34" r="14" fill="#b49cff" opacity=".18"/><path d="M42 22l2.6 7.4L52 32l-7.4 2.6L42 42l-2.6-7.4L32 32l7.4-2.6z" fill="#d9ccff"/><path d="M52 18l1 3 3 1-3 1-1 3-1-3-3-1 3-1z" fill="#ffe2b0"/>`);
 }
+
+/** A floor lamp; v = brightness 0..100, c = light colour. */
+export function floorLamp(v: number, c = "#ffcf8a"): SVGTemplateResult {
+  const g = id("f");
+  return frame(svg`<defs><radialGradient id=${g} cx="40" cy="22" r="22" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color=${c} stop-opacity=${(v / 100) * 0.9}/><stop offset="1" stop-color=${c} stop-opacity="0"/></radialGradient></defs>
+    <circle cx="40" cy="22" r="22" fill=${`url(#${g})`}/><path d="M33 26 L47 26 L44 14 L36 14Z" fill=${v ? "#e6d6b8" : "#4a4f57"}/>
+    <line x1="40" y1="26" x2="40" y2="56" stroke="#6b717a" stroke-width="1.2"/><ellipse cx="40" cy="57" rx="6" ry="1.2" fill="#555b63"/>`);
+}
+
+/** An LED strip: a line of light with its glow below. */
+export function strip(v: number, c = "#ffcf8a"): SVGTemplateResult {
+  const g = id("s");
+  return frame(svg`<defs><linearGradient id=${g} x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color=${c} stop-opacity=${(v / 100) * 0.7}/><stop offset="1" stop-color=${c} stop-opacity="0"/></linearGradient></defs>
+    <rect x="12" y="31" width="46" height="25" fill=${`url(#${g})`}/><rect x="12" y="28" width="46" height="3" rx="1.5" fill=${v ? c : "#4a4f57"} opacity=${v ? 0.45 + v / 200 : 1}/>
+    ${[16, 23, 30, 37, 44, 51].map((x) => svg`<circle cx=${x} cy="29.5" r=".8" fill="#fff" opacity=${v ? 0.9 : 0.15}/>`)}`);
+}
+
+/** A spotlight: a cone of light from the ceiling. */
+export function spot(v: number, c = "#ffcf8a"): SVGTemplateResult {
+  const g = id("p");
+  return frame(svg`<defs><linearGradient id=${g} x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color=${c} stop-opacity=${(v / 100) * 0.6}/><stop offset="1" stop-color=${c} stop-opacity="0"/></linearGradient></defs>
+    <path d="M34 12 L46 12 L56 58 L24 58Z" fill=${`url(#${g})`}/><rect x="33" y="6" width="14" height="6" rx="2" fill=${v ? "#d9c6a3" : "#4a4f57"}/>
+    <ellipse cx="40" cy="12" rx="6" ry="1.2" fill=${v ? "#fff2d6" : "#3a3e45"}/>`);
+}
+
+/** A bare bulb. */
+export function bulb(v: number, c = "#ffcf8a"): SVGTemplateResult {
+  const g = id("b");
+  return frame(svg`<defs><radialGradient id=${g} cx="40" cy="30" r="22" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color=${c} stop-opacity=${(v / 100) * 0.8}/><stop offset="1" stop-color=${c} stop-opacity="0"/></radialGradient></defs>
+    <circle cx="40" cy="30" r="22" fill=${`url(#${g})`}/><line x1="40" y1="0" x2="40" y2="18" stroke="#6b717a" stroke-width=".8"/>
+    <rect x="37" y="17" width="6" height="5" rx="1" fill="#8a919b"/><circle cx="40" cy="28" r="7" fill=${v ? "#fff2d6" : "#4a4f57"}/>`);
+}
+
+/** The illustration of a light of a given type. */
+export function lightArt(type: string, v: number, c?: string): SVGTemplateResult {
+  if (type === "lamp") return floorLamp(v, c);
+  if (type === "led") return strip(v, c);
+  if (type === "spot") return spot(v, c);
+  if (type === "bulb") return bulb(v, c);
+  return lamp(v, c);
+}
