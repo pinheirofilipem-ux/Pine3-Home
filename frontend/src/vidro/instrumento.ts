@@ -38,6 +38,9 @@ export class Pine3Instrumento extends Pine3Vidro {
         ${keys.map((k) => html`<button class=${classMap({ key: true, on: k.id === cur })} @click=${() => this.openRoom(k.id)}>
           <span class=${classMap({ led: true, on: k.id === cur, alarm: k.id === "@seguranca" && alerts > 0 })}></span>${k.name}
         </button>`)}
+        ${this.settingsButton
+          ? html`<button class="key set" @click=${() => this.dispatchEvent(new CustomEvent("pine3-settings", { bubbles: true, composed: true }))}><span class="led"></span>Def.</button>`
+          : nothing}
       </nav>
       <main class="main">${room
         ? this.renderRoom(room)

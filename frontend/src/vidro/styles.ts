@@ -5,7 +5,7 @@ import { css } from "lit";
 export const vidroStyles = css`
   :host {
     display: block;
-    position: fixed;
+    position: absolute;
     inset: 0;
     container-type: size;
     font-family: "Geist", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -144,6 +144,12 @@ export const vidroStyles = css`
     color: var(--muted);
     font-size: calc(var(--u) * 2.3);
     transition: background 0.2s, color 0.2s;
+  }
+  .dock-left .di.gear {
+    margin-top: auto;
+  }
+  .dock-bottom .di.gear {
+    margin-left: calc(var(--u) * 0.6);
   }
   .di.on {
     background: color-mix(in srgb, var(--acc) 15%, transparent);

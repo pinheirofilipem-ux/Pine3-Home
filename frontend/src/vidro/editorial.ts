@@ -39,6 +39,7 @@ export class Pine3Editorial extends Pine3Vidro {
     return html`<div class=${classMap({ vd: true, editorial: true, editing: !!this.editing })}>
       <nav class="toc" aria-label="Índice">
         ${pages.map((p) => html`<button class=${classMap({ on: p.id === cur })} @click=${() => this.openRoom(p.id)}>${p.name}</button>`)}
+        ${this.renderGear("egear")}
         <span class="no">N.º ${n + 1} / ${pages.length}</span>
       </nav>
       <main class="main">${room
@@ -207,6 +208,16 @@ export class Pine3Editorial extends Pine3Vidro {
     .toc button.on {
       font-style: italic;
       color: #c2410c;
+    }
+    .toc .egear {
+      margin-left: auto;
+      flex: none;
+      font-size: calc(var(--u) * 1.8);
+      color: rgba(20, 17, 13, 0.6);
+      align-self: center;
+    }
+    .toc .egear + .no {
+      margin-left: calc(var(--u) * 1.2);
     }
     .toc .no {
       font-family: var(--mono);

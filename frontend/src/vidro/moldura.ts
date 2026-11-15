@@ -75,6 +75,7 @@ export class Pine3Moldura extends Pine3Vidro {
       <div class="pager">
         <b>${room ? room.name : NAMES[cur] ?? ""}</b>
         <div class="dots">${o.map((v) => html`<button class=${classMap({ on: v === cur })} aria-label=${NAMES[v]} @click=${() => this.openRoom(v)}></button>`)}</div>
+        ${this.renderGear("mgear")}
       </div>
       ${this.editing
         ? nothing
@@ -305,6 +306,11 @@ export class Pine3Moldura extends Pine3Vidro {
       font-weight: 300;
       font-size: calc(var(--u) * 2.2);
       letter-spacing: -0.02em;
+    }
+    .mgear {
+      margin-top: calc(var(--u) * 0.4);
+      font-size: calc(var(--u) * 2);
+      color: rgba(255, 255, 255, 0.85);
     }
     .dots {
       display: flex;

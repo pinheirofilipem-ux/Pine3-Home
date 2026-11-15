@@ -54,6 +54,7 @@ export class Pine3Bento extends Pine3Vidro {
         </button>`;
       })}
       ${this.view === "home" ? html`<span class="btools">${this.editControls("home", [CLOCK, ...homeWidgets(this.home, this.entities)])}</span>` : nothing}
+      ${this.renderGear("bgear")}
       <span class="clk">${this.now.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}</span>
     </nav>`;
   }
@@ -169,6 +170,21 @@ export class Pine3Bento extends Pine3Vidro {
       display: flex;
       gap: calc(var(--u) * 0.6);
       flex: none;
+    }
+    .bnav .bgear {
+      margin-left: auto;
+      flex: none;
+      width: calc(var(--u) * 3.8);
+      padding: 0;
+      justify-content: center;
+      background: #fff;
+      font-size: calc(var(--u) * 1.8);
+    }
+    .bnav .btools + .bgear {
+      margin-left: 0;
+    }
+    .bnav .bgear + .clk {
+      margin-left: 0;
     }
     .bnav .btools + .clk {
       margin-left: 0;
