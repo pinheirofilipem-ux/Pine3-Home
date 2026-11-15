@@ -6,7 +6,7 @@ import { customElement } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { Pine3Vidro } from "./vidro";
 import { vidroStyles } from "./styles";
-import { homeWidgets, roomLights, summary, fmt, type Widget } from "./model";
+import { homeWidgets, roomLights, roomLine, summary, fmt, type Widget } from "./model";
 import { ICONS, roomIcon } from "./icons";
 import { svg } from "lit";
 
@@ -75,16 +75,9 @@ export class Pine3Bento extends Pine3Vidro {
       const t = r.temperature ? parseFloat(this.entities[r.temperature]?.state ?? "") : NaN;
       return html`<button class=${classMap({ w: true, s: true, room: true, dim: !on })} style=${`--rc:${ROOM_COLORS[i % ROOM_COLORS.length]}`} @click=${() => this.openRoom(r.id)}>
         <span class="nm">${icon(roomIcon(r.icon))}${Number.isNaN(t) ? nothing : html`<em>${fmt(t)}°</em>`}</span>
-        <div class="hero">${r.name}<small>${this.roomLine(lights.length, on, r.devices.length)}</small></div>
+        <div class="hero">${r.name}<small>${roomLine(lights.length, on, r.devices.length)}</small></div>
       </button>`;
     })}</div>`;
-  }
-
-  private roomLine(total: number, on: number, devices: number): string {
-    if (!total) return `${devices} dispositivo${devices === 1 ? "" : "s"}`;
-    if (!on) return total === 1 ? "luz apagada" : "luzes apagadas";
-    if (on === total) return total === 1 ? "luz acesa" : `${total} luzes acesas`;
-    return `${on} de ${total} luzes acesas`;
   }
 
   static styles = [vidroStyles, css`
