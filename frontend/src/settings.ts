@@ -61,6 +61,8 @@ export class Pine3Settings extends LitElement {
   /** Each dashboard as it was before these settings first changed it: "Desfazer" puts it back. */
   @state() private original: Record<string, Dashboard> = {};
   @state() private query = "";
+  @state() private pinSet: boolean | null = null;
+  @state() private newPin = "";
   @state() private diagnostics = false;
   /** The room whose icon picker is open in Divisões. */
   @state() private iconFor: string | null = null;
@@ -73,6 +75,7 @@ export class Pine3Settings extends LitElement {
     super.connectedCallback();
     this.section = this.start;
     void this.loadScreens();
+    void this.ws<{ set: boolean }>({ type: "pine3_home/pin/status" }).then((r) => (this.pinSet = r.set)).catch(() => undefined);
     this.timer = window.setInterval(() => this.loadPending(), 4000);
   }
 
@@ -339,6 +342,17 @@ export class Pine3Settings extends LitElement {
       <div class="row"><span class="grow">Disposição de ${this.dash.name}<small>${layouts.length ? `arrumada à mão em ${layouts.length} vista(s)` : "automática"}</small></span>
         ${layouts.length ? html`<button @click=${() => this.resetLayouts()}>Repor a automática</button>` : nothing}</div>
       <div class="row"><span class="grow">Página dos ecrãs de parede<small>${location.origin}/pine3/ecra</small></span></div>
+    </section>
+    <section class="card">
+      <h3>PIN das definições nos ecrãs</h3>
+      <p class="muted">Nos ecrãs de parede, o ⚙ pede este PIN antes de abrir as definições. Depois de o escreverem, ficam com acesso durante 10 minutos. Cinco tentativas erradas seguidas bloqueiam o PIN durante 5 minutos.</p>
+      <div class="row">
+        <span class="grow">${this.pinSet ? "PIN definido" : "Sem PIN: os ecrãs não abrem as definições"}<small>${this.pinSet ? "Escreve outro para o mudar." : "De 4 a 8 algarismos."}</small></span>
+        <input class="code" type="password" inputmode="numeric" maxlength="8" placeholder="••••" aria-label="Novo PIN" .value=${this.newPin}
+          @input=${(e: Event) => (this.newPin = (e.target as HTMLInputElement).value.replace(/\D/g, "").slice(0, 8))} />
+        <button class="pri" ?disabled=${this.newPin.length < 4} @click=${() => this.setPin(this.newPin)}>${this.pinSet ? "Mudar o PIN" : "Guardar o PIN"}</button>
+        ${this.pinSet ? html`<button class="danger" @click=${() => this.setPin(null)}>Remover</button>` : nothing}
+      </div>
     </section>`;
   }
 
@@ -487,6 +501,14 @@ export class Pine3Settings extends LitElement {
       this.original = {};
       this.emit("dashboards", dashboards);
     }, "Alterações desfeitas.");
+  }
+
+  private setPin(pin: string | null): Promise<void> {
+    return this.run(async () => {
+      const r = await this.ws<{ set: boolean }>({ type: "pine3_home/pin/set", pin });
+      this.pinSet = r.set;
+      this.newPin = "";
+    }, pin ? "PIN guardado." : "PIN removido: os ecrãs deixam de abrir as definições.");
   }
 
   // ---------- actions ----------

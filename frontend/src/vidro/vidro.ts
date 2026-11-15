@@ -77,6 +77,8 @@ export class Pine3Vidro extends LitElement {
   @property({ type: Boolean }) ambient = false;
   /** Show the ⚙ that opens the settings (the panel in Home Assistant; wall screens from phase E, with a PIN). */
   @property({ type: Boolean }) settingsButton = false;
+  /** May change the house's settings from a card ("Este cartão"): an administrator, or a screen after the PIN. */
+  @property({ type: Boolean }) cardSettings = false;
   /** A small copy in the settings: draws only, asks Home Assistant for nothing (forecast, warnings, charts). */
   @property({ type: Boolean }) preview = false;
   /** The view to open on (the settings' preview shows the view chosen there). */
@@ -860,7 +862,7 @@ export class Pine3Vidro extends LitElement {
 
   /** "Este cartão": the type, the name and hiding it. Only where the settings can be changed (the HA panel). */
   private thisCard(id: string) {
-    if (!this.settingsButton || !this.deviceOf(id) && !this.home.rooms.some((r) => r.entities?.some((e) => e.id === id))) return nothing;
+    if (!this.cardSettings || !this.deviceOf(id) && !this.home.rooms.some((r) => r.entities?.some((e) => e.id === id))) return nothing;
     const st = this.home.settings ?? {};
     const types = TYPES_FOR[domainOf(id)] ?? [];
     const cur = this.typeOf(id);
