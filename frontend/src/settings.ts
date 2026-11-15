@@ -51,8 +51,14 @@ export class Pine3Settings extends LitElement {
   @state() private screenName = "";
   @state() private message: { ok: boolean; text: string } | null = null;
   @state() private scale = 0.4;
+  /** The view shown in the preview. */
+  @state() private pvView = "home";
+  /** Each dashboard as it was before these settings first changed it: "Desfazer" puts it back. */
+  @state() private original: Record<string, Dashboard> = {};
   private timer?: number;
   private resize?: ResizeObserver;
+  private thumbResize?: ResizeObserver;
+  private thumbGrid?: HTMLElement;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -65,6 +71,7 @@ export class Pine3Settings extends LitElement {
     super.disconnectedCallback();
     clearInterval(this.timer);
     this.resize?.disconnect();
+    this.thumbResize?.disconnect();
   }
 
   protected updated(changed: PropertyValues): void {
@@ -77,6 +84,17 @@ export class Pine3Settings extends LitElement {
     if (!frame && this.resize) {
       this.resize.disconnect();
       this.resize = undefined;
+    }
+    // the style thumbnails: the same scaling, to the width of one thumbnail
+    const grid = this.renderRoot.querySelector<HTMLElement>(".styles");
+    const one = grid?.querySelector<HTMLElement>(".thumb-live");
+    if (grid && one) {
+      if (!this.thumbResize || this.thumbGrid !== grid) {
+        this.thumbResize?.disconnect();
+        this.thumbGrid = grid;
+        this.thumbResize = new ResizeObserver(() => grid.style.setProperty("--ts", String(one.clientWidth / PREVIEW_W)));
+        this.thumbResize.observe(one);
+      }
     }
     if (changed.has("start")) this.section = this.start;
   }
@@ -121,6 +139,7 @@ export class Pine3Settings extends LitElement {
   /** Change the dashboard: shown at once (preview and dashboard), then saved. */
   private save(changes: Partial<Dashboard>): Promise<void> {
     const d = this.dash;
+    if (!this.original[d.id]) this.original = { ...this.original, [d.id]: { ...d } };
     const next = { ...d, ...changes };
     this.dashboards = this.dashboards.map((x) => (x.id === d.id ? next : x));
     this.emit("dashboards", this.dashboards);
@@ -153,6 +172,9 @@ export class Pine3Settings extends LitElement {
         </div>
         ${SECTIONS.map((s) => html`<button class=${classMap({ item: true, on: s.id === this.section })} @click=${() => { this.section = s.id; this.message = null; void this.loadPending(); }}>
           <i>${icon(s.icon)}</i>${s.name}</button>`)}
+        ${Object.keys(this.original).length
+          ? html`<button class="undo" @click=${() => this.undo()}>Desfazer alterações</button>`
+          : nothing}
         <button class="done" @click=${() => this.close()}>Concluído</button>
       </nav>
       <main class="content">
@@ -184,8 +206,11 @@ export class Pine3Settings extends LitElement {
         ${this.dashPicker()}
         <div class="pv" style=${`height:${Math.round(PREVIEW_H * this.scale)}px`} aria-label="Pré-visualização">
           <div class="pvin" style=${`transform:scale(${this.scale})`}>
-            ${shtml`<${tag} .home=${this.home} .entities=${this.entities} .dashboard=${d} .conn=${this.conn}></${tag}>`}
+            ${shtml`<${tag} .home=${this.home} .entities=${this.entities} .dashboard=${d} .conn=${this.conn} .startView=${this.pvView}></${tag}>`}
           </div>
+        </div>
+        <div class="pvviews" aria-label="Vista na pré-visualização">
+          ${this.previewViews().map(([id, n]) => html`<button class=${classMap({ chip: true, on: id === this.pvView })} @click=${() => (this.pvView = id)}>${n}</button>`)}
         </div>
       </section>
       <section class="card">
@@ -194,7 +219,8 @@ export class Pine3Settings extends LitElement {
           const ready = READY_STYLES.includes(s);
           return html`<button class=${classMap({ sty: true, on: s === d.style })} ?disabled=${!ready} aria-pressed=${s === d.style}
             @click=${() => this.save({ style: s })}>
-            <i style=${`background:${STYLE_SWATCH[s]}`}></i><span>${STYLE_NAMES[s]}${ready ? "" : html`<small>em breve</small>`}</span></button>`;
+            ${ready ? this.thumb(s) : html`<i style=${`background:${STYLE_SWATCH[s]}`}></i>`}
+            <span>${STYLE_NAMES[s]}${ready ? "" : html`<small>em breve</small>`}</span></button>`;
         })}</div>
       </section>
       <section class="card">
@@ -304,6 +330,43 @@ export class Pine3Settings extends LitElement {
         ${layouts.length ? html`<button @click=${() => this.resetLayouts()}>Repor a automática</button>` : nothing}</div>
       <div class="row"><span class="grow">Página dos ecrãs de parede<small>${location.origin}/pine3/ecra</small></span></div>
     </section>`;
+  }
+
+  /** The views the preview can show: Casa, the rooms and the special views. */
+  private previewViews(): Array<[string, string]> {
+    const rooms = this.home.rooms.filter((r) => !r.hidden && r.devices.some((x) => !x.hidden)).map((r): [string, string] => [r.id, r.name]);
+    return [["home", "Casa"], ...rooms, ["@clima", "Clima"], ["@seguranca", "Segurança"], ["@cenas", "Cenas"]];
+  }
+
+  /** A style drawn with this house: a small, inert copy of the dashboard in that style. */
+  private thumb(style: Style) {
+    const tag = styleTag(style);
+    const d = { ...this.dash, style };
+    return html`<i class="thumb-live"><span class="tin">
+      ${shtml`<${tag} preview .home=${this.home} .entities=${this.entities} .dashboard=${d} .conn=${this.conn}></${tag}>`}
+    </span></i>`;
+  }
+
+  /** Put back the dashboards these settings changed, as they were when the settings opened. */
+  private undo(): Promise<void> {
+    const original = this.original;
+    return this.run(async () => {
+      let dashboards = this.dashboards;
+      for (const d of Object.values(original)) {
+        const r = await this.ws<{ dashboards: Dashboard[] }>({
+          type: "pine3_home/dashboards/save",
+          dashboard: {
+            id: d.id, name: d.name, style: d.style, dock: d.dock, theme: d.theme, screen_edit: d.screen_edit !== false,
+            ...(d.ambient_after != null ? { ambient_after: d.ambient_after } : {}),
+            ...(d.ambient_brightness ? { ambient_brightness: d.ambient_brightness } : {}),
+          },
+        });
+        dashboards = r.dashboards;
+      }
+      this.dashboards = dashboards;
+      this.original = {};
+      this.emit("dashboards", dashboards);
+    }, "Alterações desfeitas.");
   }
 
   // ---------- actions ----------
@@ -579,6 +642,34 @@ export class Pine3Settings extends LitElement {
       width: ${PREVIEW_W}px;
       height: ${PREVIEW_H}px;
       transform-origin: 0 0;
+    }
+    .pvviews {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .thumb-live {
+      position: relative;
+      overflow: hidden;
+      pointer-events: none;
+      background: #0b0c0e;
+    }
+    .tin {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: ${PREVIEW_W}px;
+      height: ${PREVIEW_H}px;
+      transform-origin: 0 0;
+      transform: scale(var(--ts, 0.1));
+    }
+    .undo {
+      align-self: flex-start;
+      margin-top: auto;
+      color: #f2c36a;
+    }
+    .undo + .done {
+      margin-top: 0;
     }
     .styles {
       display: grid;

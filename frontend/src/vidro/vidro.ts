@@ -76,6 +76,10 @@ export class Pine3Vidro extends LitElement {
   @property({ type: Boolean }) ambient = false;
   /** Show the ⚙ that opens the settings (the panel in Home Assistant; wall screens from phase E, with a PIN). */
   @property({ type: Boolean }) settingsButton = false;
+  /** A small copy in the settings: draws only, asks Home Assistant for nothing (forecast, warnings, charts). */
+  @property({ type: Boolean }) preview = false;
+  /** The view to open on (the settings' preview shows the view chosen there). */
+  @property() startView = "";
   /** Whether the screen runs inside the Pine3 Wallpanel app. */
   @property({ type: Boolean }) wallpanel = false;
 
@@ -113,6 +117,11 @@ export class Pine3Vidro extends LitElement {
   }
 
   protected willUpdate(changed: PropertyValues): void {
+    if (changed.has("startView") && this.startView) {
+      this.view = this.startView;
+      this.category = "all";
+    }
+    if (this.preview) return;
     if (changed.has("home") && this.view !== "home" && !this.view.startsWith("@") && !this.home.rooms.some((r) => r.id === this.view)) this.view = "home";
     const area = this.home?.settings?.ipma_area ?? null;
     if (area !== this.ipmaArea || (area && Date.now() - this.ipmaAt > IPMA_TTL)) {
@@ -140,6 +149,7 @@ export class Pine3Vidro extends LitElement {
 
   protected updated(): void {
     // the charts of the sensors on screen: one request for all that are missing or old
+    if (this.preview) return;
     const now = Date.now();
     const due = [...this.historyWanted].filter((id) => now - (this.historyAt[id] ?? 0) > HISTORY_TTL);
     this.historyWanted.clear();
