@@ -41,11 +41,14 @@ DASHBOARD = vol.Schema({
     vol.Required("id"): SLUG,
     vol.Required("name"): vol.All(str, vol.Length(min=1, max=40)),
     vol.Required("style"): vol.In(STYLES),
-    vol.Optional("dock", default="left"): vol.In(DOCK_PLACEMENTS),
-    vol.Optional("theme", default="grafite"): vol.All(str, vol.Length(max=32)),
+    vol.Optional("dock"): vol.In(DOCK_PLACEMENTS),
+    vol.Optional("theme"): vol.All(str, vol.Length(max=32)),
     vol.Optional("views"): vol.Any(None, list),
     vol.Optional("layouts"): {VIEW_ID: LAYOUT},
-    vol.Optional("screen_edit", default=True): bool,
+    vol.Optional("screen_edit"): bool,
+    # ambient face: minutes without activity before it shows (0 = never), and the screen brightness on it
+    vol.Optional("ambient_after"): vol.All(int, vol.Range(min=0, max=60)),
+    vol.Optional("ambient_brightness"): vol.In(["auto", "low", "off"]),
 })
 
 
@@ -176,7 +179,8 @@ async def ws_dashboard_save(hass: HomeAssistant, connection: websocket_api.Activ
     dashboards = _data(hass)["dashboards"]
     i = next((k for k, d in enumerate(dashboards) if d["id"] == dash["id"]), None)
     if i is None:
-        dashboards.append(dash)
+        # a new dashboard: the defaults for what wasn't given; an existing one only changes what was sent
+        dashboards.append({"dock": "left", "theme": "grafite", "screen_edit": True, **dash})
     else:
         dashboards[i] = {**dashboards[i], **dash}
     await hass.data[DOMAIN]["save"]()
