@@ -14,6 +14,10 @@ export interface Dashboard {
   layouts?: Record<string, Layout>;
   /** Whether the wall screens showing this dashboard may edit it. */
   screen_edit?: boolean;
+  /** Minutes without activity before the ambient face shows (0 = never; default 2). */
+  ambient_after?: number;
+  /** Screen brightness on the ambient face, inside Pine3 Wallpanel. */
+  ambient_brightness?: "auto" | "low" | "off";
 }
 
 export type WidgetSize = "s" | "m" | "l" | "xl";
@@ -94,3 +98,6 @@ export const IPMA_AREAS: Record<string, string> = {
   MCN: "Madeira · Costa Norte", MCS: "Madeira · Costa Sul", MRM: "Madeira · Regiões Montanhosas", MPS: "Porto Santo",
   AOR: "Açores · Grupo Oriental", ACE: "Açores · Grupo Central", AOC: "Açores · Grupo Ocidental",
 };
+
+export const AMBIENT_AFTER: Array<[number, string]> = [[0, "Nunca"], [1, "1 minuto"], [2, "2 minutos"], [5, "5 minutos"], [10, "10 minutos"], [30, "30 minutos"]];
+export const AMBIENT_BRIGHTNESS: Record<string, string> = { auto: "Automático (dia 50%, noite 12%)", low: "Sempre baixo (12%)", off: "Não mexer" };

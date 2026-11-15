@@ -72,6 +72,10 @@ export class Pine3Vidro extends LitElement {
   @property() screenName = "";
   /** Whether this screen may edit the dashboard's layout (an admin, or a screen allowed to). */
   @property({ type: Boolean }) canEdit = false;
+  /** The ambient face: a calm clock after a few minutes without activity (decided by the screen). */
+  @property({ type: Boolean }) ambient = false;
+  /** Whether the screen runs inside the Pine3 Wallpanel app. */
+  @property({ type: Boolean }) wallpanel = false;
 
   @state() private editing: string | null = null; // the view being edited
   @state() private draft: Layout | null = null;
@@ -281,6 +285,25 @@ export class Pine3Vidro extends LitElement {
     this.moving = null;
   }
 
+  /** Back to Casa, nothing open: when the ambient face shows or the screen turns off. */
+  reset(): void {
+    this.stopEdit();
+    this.sheet = null;
+    this.drag = null;
+    this.view = "home";
+    this.category = "all";
+    this.main()?.scrollTo({ top: 0 });
+  }
+
+  /** Something the person is in the middle of, that the ambient face mustn't throw away. */
+  get busy(): boolean {
+    return !!this.editing || !!this.press;
+  }
+
+  private main(): HTMLElement | null {
+    return this.renderRoot?.querySelector(".main") ?? null;
+  }
+
   // ---------- editing the layout ----------
   private arranged(view: string, auto: Widget[]): Widget[] {
     const layout = this.editing === view && this.draft ? this.draft : this.dashboard.layouts?.[view];
@@ -437,12 +460,41 @@ export class Pine3Vidro extends LitElement {
 
   render() {
     if (!this.home) return nothing;
+    if (this.ambient) return this.renderAmbient();
     const room = this.home.rooms.find((r) => r.id === this.view);
     const cls = { vd: true, light: !this.dark, editing: !!this.editing, [`dock-${this.dashboard.dock}`]: true };
     return html`<div class=${classMap(cls)}>
       ${this.renderDock()}
       <main class="main">${room ? this.renderRoom(room) : this.view.startsWith("@") ? this.renderView(this.view) : this.renderHome()}</main>
       ${this.sheet ? this.renderSheet(this.sheet) : nothing}
+    </div>`;
+  }
+
+  /** The ambient face: time, date, the weather and one line about the house. Always dark, and it drifts a little
+   * every minute so nothing stays on the same pixels. Any touch (or movement, in Pine3 Wallpanel) wakes it. */
+  private renderAmbient() {
+    const s = summary(this.home, this.entities);
+    const w = this.home.weather ? this.entities[this.home.weather] : undefined;
+    const t = w?.attributes.temperature as number | undefined;
+    const top = this.warnings[0];
+    const m = this.now.getHours() * 60 + this.now.getMinutes();
+    const dx = ((m % 7) - 3) * 0.8;
+    const dy = ((m % 5) - 2) * 0.8;
+    const status = [
+      s.lightsOn ? `${s.lightsOn} luz${s.lightsOn > 1 ? "es" : ""} acesa${s.lightsOn > 1 ? "s" : ""}` : null,
+      s.alerts ? s.alertText : null,
+    ].filter(Boolean);
+    return html`<div class="vd amb" role="button" aria-label="Tocar para acordar">
+      <div class="ambc" style=${`transform:translate(calc(var(--u) * ${dx}), calc(var(--u) * ${dy}))`}>
+        <div class="atime">${this.now.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}</div>
+        <div class="adate">${this.now.toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" })}</div>
+        <div class="arow">
+          ${w ? html`<span class="awx">${weatherArt(w.state)}<b>${t != null ? `${Math.round(t)}°` : ""}</b>${WEATHER[w.state] ?? w.state}</span>` : nothing}
+          ${top ? html`<span class=${`ipma ${top.awarenessLevelID}`}><i></i>Aviso ${LEVELS[top.awarenessLevelID] ?? ""} · ${top.awarenessTypeName.toLowerCase()}</span>` : nothing}
+        </div>
+        <div class=${classMap({ astatus: true, att: s.alerts > 0 })}>${status.length ? status.join(" · ") : "Tudo tranquilo em casa"}</div>
+      </div>
+      <span class="ahint">${this.wallpanel ? "Aproxima-te ou toca para acordar" : "Toca para acordar"}</span>
     </div>`;
   }
 

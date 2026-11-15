@@ -26,8 +26,11 @@ Uma app para o Home Assistant com vários painéis para a casa, e uma página le
 | Fase | O quê |
 |---|---|
 | 0 | Integração, emparelhamento, gestão de ecrãs e painéis, página do ecrã |
-| 1 | Estilo **Vidro** (inspirado no GlassHome), widgets com arte viva, dock à esquerda ou em baixo |
-| 2+ | Os restantes estilos: Bento, Moldura, Editorial, Instrumento, Órbita, Carteira, Lente |
+| 1 | Estilo **Vidro** (inspirado no GlassHome), widgets com arte viva, dock à esquerda ou em baixo, temas |
+| 2 | Vistas Clima, Segurança e Cenas, gráficos de 24 h nos sensores, avisos do IPMA |
+| 3 | Edição da grelha no ecrã: ordem, tamanhos, esconder e adicionar |
+| 4 | Face ambiente e ponte com o Pine3 Wallpanel (movimento, ecrã, brilho) |
+| 5+ | Os restantes estilos: Bento, Moldura, Editorial, Instrumento, Órbita, Carteira, Lente |
 
 ## Desenvolvimento
 

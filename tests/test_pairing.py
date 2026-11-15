@@ -125,11 +125,14 @@ async def test_dashboards(hass: HomeAssistant, pine3, hass_ws_client) -> None:
     assert res["dashboards"][0]["style"] == "vidro" and "lente" in res["styles"]
     await admin.send_json({"id": 2, "type": "pine3_home/dashboards/save", "dashboard": {"id": "cozinha", "name": "Cozinha", "style": "bento", "dock": "bottom"}})
     assert len((await admin.receive_json())["result"]["dashboards"]) == 2
-    await admin.send_json({"id": 3, "type": "pine3_home/dashboards/save", "dashboard": {"id": "x", "name": "X", "style": "nope"}})
+    await admin.send_json({"id": 3, "type": "pine3_home/dashboards/save", "dashboard": {"id": "x", "name": "X", "style": "vidro", "ambient_after": 99}})
     assert not (await admin.receive_json())["success"]
-    await admin.send_json({"id": 4, "type": "pine3_home/dashboards/remove", "dashboard_id": "cozinha"})
+    await admin.send_json({"id": 4, "type": "pine3_home/dashboards/save", "dashboard": {"id": "cozinha", "name": "Cozinha", "style": "vidro", "ambient_after": 5, "ambient_brightness": "low"}})
+    saved = next(d for d in (await admin.receive_json())["result"]["dashboards"] if d["id"] == "cozinha")
+    assert saved["ambient_after"] == 5 and saved["ambient_brightness"] == "low" and saved["dock"] == "bottom"
+    await admin.send_json({"id": 44, "type": "pine3_home/dashboards/remove", "dashboard_id": "cozinha"})
     assert len((await admin.receive_json())["result"]["dashboards"]) == 1
-    await admin.send_json({"id": 5, "type": "pine3_home/dashboards/remove", "dashboard_id": "casa"})
+    await admin.send_json({"id": 45, "type": "pine3_home/dashboards/remove", "dashboard_id": "casa"})
     assert (await admin.receive_json())["error"]["code"] == "last_dashboard"
 
 

@@ -2,7 +2,7 @@
 import { LitElement, html, css, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { base } from "./lib/base";
-import { DOCK_NAMES, IPMA_AREAS, STYLE_NAMES, THEME_NAMES } from "./lib/types";
+import { AMBIENT_AFTER, AMBIENT_BRIGHTNESS, DOCK_NAMES, IPMA_AREAS, STYLE_NAMES, THEME_NAMES } from "./lib/types";
 import type { Dashboard, DockPlacement, Home, PendingCode, Screen, Style } from "./lib/types";
 
 interface Hass {
@@ -266,6 +266,16 @@ export class Pine3HomePanel extends LitElement {
               <label>Tema
                 <select ?disabled=${!this.admin} @change=${(e: Event) => this.saveDashboard(d, { theme: (e.target as HTMLSelectElement).value })}>
                   ${Object.entries(THEME_NAMES).map(([k, n]) => html`<option value=${k} ?selected=${k === d.theme}>${n}</option>`)}
+                </select>
+              </label>
+              <label>Face ambiente
+                <select ?disabled=${!this.admin} @change=${(e: Event) => this.saveDashboard(d, { ambient_after: Number((e.target as HTMLSelectElement).value) })}>
+                  ${AMBIENT_AFTER.map(([v, n]) => html`<option value=${v} ?selected=${v === (d.ambient_after ?? 2)}>${n}</option>`)}
+                </select>
+              </label>
+              <label title="Só no Pine3 Wallpanel">Brilho no ambiente
+                <select ?disabled=${!this.admin} @change=${(e: Event) => this.saveDashboard(d, { ambient_brightness: (e.target as HTMLSelectElement).value as Dashboard["ambient_brightness"] })}>
+                  ${Object.entries(AMBIENT_BRIGHTNESS).map(([k, n]) => html`<option value=${k} ?selected=${k === (d.ambient_brightness ?? "auto")}>${n}</option>`)}
                 </select>
               </label>
               <label class="check">

@@ -14,6 +14,8 @@ import {
 import { base } from "./lib/base";
 import { pairStatus, startPairing, storeToken, storedToken, type PairStart } from "./lib/pairing";
 import "./vidro/vidro";
+import type { Pine3Vidro } from "./vidro/vidro";
+import { applyBrightness, bridge, onWallpanel } from "./lib/wallpanel";
 import type { Home, Me } from "./lib/types";
 
 type Phase = "starting" | "pairing" | "connecting" | "ready" | "error";
@@ -33,10 +35,27 @@ export class Pine3Screen extends LitElement {
   private pollTimer?: number;
   private clockTimer?: number;
   private unsubs: Array<() => void> = [];
+  @state() private ambient = false;
+  private lastActivity = Date.now();
+  private idleTimer?: number;
+  private offWallpanel?: () => void;
+  private onActivity = (e: Event) => this.activity(e);
 
   connectedCallback(): void {
     super.connectedCallback();
     this.clockTimer = window.setInterval(() => (this.now = new Date()), 15_000);
+    // any touch counts as activity; the first touch on the ambient face only wakes the dashboard
+    window.addEventListener("pointerdown", this.onActivity, true);
+    window.addEventListener("keydown", this.onActivity, true);
+    this.idleTimer = window.setInterval(() => this.checkIdle(), 5000);
+    this.offWallpanel = onWallpanel((type) => {
+      if (type === "sleep") {
+        // the screen went off: be on Casa when it comes back
+        this.ambient = false;
+        this.vidro?.reset();
+      }
+      this.activity();
+    });
     const token = storedToken();
     if (token) void this.connect(token);
     else void this.beginPairing();
@@ -45,6 +64,10 @@ export class Pine3Screen extends LitElement {
   disconnectedCallback(): void {
     super.disconnectedCallback();
     clearInterval(this.clockTimer);
+    clearInterval(this.idleTimer);
+    window.removeEventListener("pointerdown", this.onActivity, true);
+    window.removeEventListener("keydown", this.onActivity, true);
+    this.offWallpanel?.();
     clearTimeout(this.pollTimer);
     this.teardown();
   }
@@ -54,6 +77,37 @@ export class Pine3Screen extends LitElement {
     this.unsubs = [];
     this.conn?.close();
     this.conn = undefined;
+  }
+
+  // ---------- ambient face ----------
+  private get vidro(): Pine3Vidro | null {
+    return this.renderRoot.querySelector("pine3-vidro");
+  }
+
+  private activity(e?: Event): void {
+    this.lastActivity = Date.now();
+    if (this.ambient) {
+      this.ambient = false;
+      if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    }
+  }
+
+  private checkIdle(): void {
+    if (this.phase !== "ready" || this.ambient || !this.me) return;
+    const after = this.me.dashboard.ambient_after ?? 2;
+    if (!after || this.vidro?.busy) return;
+    if (Date.now() - this.lastActivity > after * 60_000) {
+      this.ambient = true;
+      this.vidro?.reset();
+    }
+  }
+
+  protected updated(): void {
+    const sun = this.entities["sun.sun"]?.state;
+    applyBrightness(this.ambient, this.me?.dashboard.ambient_brightness, sun ? sun === "below_horizon" : null);
   }
 
   // ---------- pairing ----------
@@ -156,7 +210,7 @@ export class Pine3Screen extends LitElement {
     if (!this.home || !this.conn) return html`<main class="center"><p class="muted">A carregar a casa…</p></main>`;
     // Phase 1 ships Vidro; the other styles fall back to it until they arrive.
     return html`<pine3-vidro .home=${this.home} .entities=${this.entities} .dashboard=${me.dashboard} .conn=${this.conn}
-      .screenName=${me.screen?.name ?? ""} ?canEdit=${me.is_admin || me.dashboard.screen_edit !== false}></pine3-vidro>`;
+      .screenName=${me.screen?.name ?? ""} ?ambient=${this.ambient} .wallpanel=${bridge() !== null} ?canEdit=${me.is_admin || me.dashboard.screen_edit !== false}></pine3-vidro>`;
   }
 
   render() {

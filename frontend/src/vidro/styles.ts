@@ -627,6 +627,83 @@ export const vidroStyles = css`
     background: #ff8a5c;
     color: #2a0f04;
   }
+  /* ---------- ambient face ---------- */
+  .amb {
+    background: radial-gradient(70% 60% at 50% 40%, #171a1e 0%, #0b0c0e 70%, #060708 100%);
+    color: #e9edf2;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    animation: fade 0.6s;
+  }
+  .ambc {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: calc(var(--u) * 1.2);
+    transition: transform 2s ease;
+    text-align: center;
+  }
+  .atime {
+    font-weight: 200;
+    font-size: calc(var(--u) * 17);
+    letter-spacing: -0.05em;
+    line-height: 0.9;
+    font-variant-numeric: tabular-nums;
+  }
+  .adate {
+    font-size: calc(var(--u) * 2);
+    color: #8b939e;
+  }
+  .adate::first-letter {
+    text-transform: uppercase;
+  }
+  .arow {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--u) * 1.6);
+    margin-top: calc(var(--u) * 1.4);
+  }
+  .awx {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--u) * 0.8);
+    font-size: calc(var(--u) * 1.6);
+    color: #8b939e;
+  }
+  .awx .art {
+    width: calc(var(--u) * 5);
+    height: calc(var(--u) * 5);
+  }
+  .awx b {
+    font-weight: 300;
+    font-size: calc(var(--u) * 3.4);
+    color: #e9edf2;
+    letter-spacing: -0.04em;
+  }
+  .amb .ipma {
+    margin: 0;
+    font-size: calc(var(--u) * 1.2);
+  }
+  .astatus {
+    font-size: calc(var(--u) * 1.5);
+    color: #8b939e;
+  }
+  .astatus.att {
+    color: #ff9e7a;
+  }
+  .ahint {
+    position: absolute;
+    bottom: calc(var(--u) * 3);
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: calc(var(--u) * 1.05);
+    color: #4f5661;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
   /* ---------- edit mode ---------- */
   .pill.icon {
     padding: calc(var(--u) * 0.8);
