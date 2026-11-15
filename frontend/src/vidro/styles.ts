@@ -422,7 +422,8 @@ export const vidroStyles = css`
   }
   /* a light's own colour is for dark cards; on light ones the warm "on" ink reads better */
   .vd.light .w.on .hero,
-  .vd.moldura .w.on .hero {
+  .vd.moldura .w.on .hero,
+  .vd.lente .w.on .hero {
     color: var(--on-hero) !important;
   }
   .w.att {
