@@ -8,12 +8,15 @@ import type { Connection, HassEntities } from "home-assistant-js-websocket";
 import { mdiMenu } from "@mdi/js";
 import { styleTag } from "./lib/styles";
 import type { Dashboard, Home } from "./lib/types";
+import { setLang, tr } from "./lib/i18n";
 import "./settings";
 
 interface Hass {
   connection: Connection;
   states: HassEntities;
   user?: { is_admin: boolean; name: string };
+  /** The person's own language in Home Assistant. */
+  language?: string;
 }
 
 const DASH_KEY = "pine3_home.panel_dashboard";
@@ -117,15 +120,17 @@ export class Pine3HomePanel extends LitElement {
 
   render() {
     if (!this.hass) return nothing;
+    // the house's language, or (automatic) this person's language in Home Assistant
+    setLang(this.home?.settings?.language, this.hass.language ?? this.home?.language);
     if (this.error) return html`<p class="center">Pine3 Home: ${this.error}</p>`;
-    if (!this.home || !this.dashboards.length) return html`<p class="center">A carregar a casa…</p>`;
+    if (!this.home || !this.dashboards.length) return html`<p class="center">${tr("A carregar a casa…")}</p>`;
     const dash = this.dashboards.find((d) => d.id === this.dashId) ?? this.dashboards[0];
     const tag = styleTag(dash.style);
     return html`
       ${shtml`<${tag} .home=${this.home} .entities=${this.hass.states} .dashboard=${dash} .conn=${this.hass.connection}
         ?settingsButton=${this.admin} ?cardSettings=${this.admin} ?canEdit=${this.admin}></${tag}>`}
       ${this.narrow
-        ? html`<button class="menu" aria-label="Menu do Home Assistant"
+        ? html`<button class="menu" aria-label=${tr("Menu do Home Assistant")}
             @click=${() => this.dispatchEvent(new Event("hass-toggle-menu", { bubbles: true, composed: true }))}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d=${mdiMenu} fill="currentColor" /></svg></button>`
         : nothing}

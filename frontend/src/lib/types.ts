@@ -1,4 +1,5 @@
 // Shapes returned by the integration's websocket commands (custom_components/pine3_home/websocket.py).
+import { trMap } from "./i18n";
 
 export type Style = "vidro" | "bento" | "moldura" | "editorial" | "instrumento" | "orbita" | "carteira" | "lente";
 export type DockPlacement = "left" | "bottom";
@@ -72,6 +73,8 @@ export interface RoomEntity {
 
 export interface HomeSettings {
   ipma_area?: string | null;
+  /** "auto" follows Home Assistant's language. */
+  language?: "auto" | "pt" | "en";
   hidden?: string[];
   shown?: string[];
   hidden_rooms?: string[];
@@ -91,6 +94,8 @@ export interface Home {
   persons: string[];
   version: string;
   settings?: HomeSettings;
+  /** Home Assistant's own language. */
+  language?: string;
 }
 
 export interface Me {
@@ -100,7 +105,7 @@ export interface Me {
   version: string;
 }
 
-export const STYLE_NAMES: Record<Style, string> = {
+export const STYLE_NAMES: Record<Style, string> = trMap({
   vidro: "Vidro",
   bento: "Bento",
   moldura: "Moldura",
@@ -109,14 +114,14 @@ export const STYLE_NAMES: Record<Style, string> = {
   orbita: "Órbita",
   carteira: "Carteira",
   lente: "Lente",
-};
+});
 
 /** The styles that exist so far; the others show Vidro until they arrive. */
 export const READY_STYLES: Style[] = ["vidro", "bento", "moldura", "editorial", "instrumento", "orbita", "carteira", "lente"];
 
-export const DOCK_NAMES: Record<DockPlacement, string> = { left: "À esquerda", bottom: "Em baixo" };
+export const DOCK_NAMES: Record<DockPlacement, string> = trMap({ left: "À esquerda", bottom: "Em baixo" });
 
-export const THEME_NAMES: Record<string, string> = { grafite: "Grafite (escuro)", claro: "Claro", auto: "Automático (pôr do sol)" };
+export const THEME_NAMES: Record<string, string> = trMap({ grafite: "Grafite (escuro)", claro: "Claro", auto: "Automático (pôr do sol)" });
 
 // IPMA warning areas (idAreaAviso) for the weather widget.
 export const IPMA_AREAS: Record<string, string> = {
@@ -128,4 +133,4 @@ export const IPMA_AREAS: Record<string, string> = {
 };
 
 export const AMBIENT_AFTER: Array<[number, string]> = [[0, "Nunca"], [1, "1 minuto"], [2, "2 minutos"], [5, "5 minutos"], [10, "10 minutos"], [30, "30 minutos"]];
-export const AMBIENT_BRIGHTNESS: Record<string, string> = { auto: "Automático (dia 50%, noite 12%)", low: "Sempre baixo (12%)", off: "Não mexer" };
+export const AMBIENT_BRIGHTNESS: Record<string, string> = trMap({ auto: "Automático (dia 50%, noite 12%)", low: "Sempre baixo (12%)", off: "Não mexer" });

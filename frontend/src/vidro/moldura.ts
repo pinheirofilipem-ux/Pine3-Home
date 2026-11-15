@@ -6,12 +6,13 @@ import { css, html, nothing, svg } from "lit";
 import { customElement } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { Pine3Vidro } from "./vidro";
+import { locale, tr, trMap, trn } from "../lib/i18n";
 import { vidroStyles } from "./styles";
 import { domainOf, fmt, roomLights, roomLine, summary } from "./model";
 import { ICONS, roomIcon } from "./icons";
 
 const icon = (path: string) => svg`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d=${path} fill="currentColor"/></svg>`;
-const NAMES: Record<string, string> = { home: "Casa", "@divisoes": "Divisões", "@clima": "Clima", "@seguranca": "Segurança", "@cenas": "Cenas" };
+const NAMES: Record<string, string> = trMap({ home: "Casa", "@divisoes": "Divisões", "@clima": "Clima", "@seguranca": "Segurança", "@cenas": "Cenas" });
 const SWIPE = 70; // px sideways to change view
 
 const HILLS = svg`<svg viewBox="0 0 100 46" preserveAspectRatio="none" aria-hidden="true">
@@ -79,9 +80,9 @@ export class Pine3Moldura extends Pine3Vidro {
       </div>
       ${this.editing
         ? nothing
-        : html`<button class="edge l" aria-label="Vista anterior" @click=${() => this.step(-1)}>${icon(ICONS.back)}</button>
-          <button class="edge r" aria-label="Vista seguinte" @click=${() => this.step(1)}>${icon(ICONS.back)}</button>`}
-      ${isHome ? html`<span class="hint">desliza para o lado para mudar de vista</span>` : nothing}
+        : html`<button class="edge l" aria-label=${tr("Vista anterior")} @click=${() => this.step(-1)}>${icon(ICONS.back)}</button>
+          <button class="edge r" aria-label=${tr("Vista seguinte")} @click=${() => this.step(1)}>${icon(ICONS.back)}</button>`}
+      ${isHome ? html`<span class="hint">${tr("desliza para o lado para mudar de vista")}</span>` : nothing}
       ${this.sheet ? this.renderSheet(this.sheet) : nothing}
     </div>`;
   }
@@ -98,34 +99,34 @@ export class Pine3Moldura extends Pine3Vidro {
     const cs = climate ? this.entities[climate.id] : undefined;
     const ls = lock ? this.entities[lock.id] : undefined;
     const lines = [
-      s.lightsOn ? `${s.lightsOn} luz${s.lightsOn > 1 ? "es" : ""} acesa${s.lightsOn > 1 ? "s" : ""}` : "luzes apagadas",
+      s.lightsOn ? trn(s.lightsOn, "{n} luz acesa", "{n} luzes acesas") : tr("luzes apagadas"),
       s.alerts ? s.alertText : null,
     ].filter(Boolean);
     return html`<div class="tl">
-        <b>${this.now.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}</b>
-        <span>${this.now.toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" })}</span>
+        <b>${this.now.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" })}</b>
+        <span>${this.now.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" })}</span>
       </div>
       <div class="tr">
         ${w ? html`<b>${t != null ? `${Math.round(t)}°` : ""}</b>${this.weatherWord(w.state)}<br />` : nothing}
         ${lines.join(" · ")}
-        ${top ? html`<br /><span class=${`ipma ${top.awarenessLevelID}`}><i></i>Aviso ${({ yellow: "amarelo", orange: "laranja", red: "vermelho" } as Record<string, string>)[top.awarenessLevelID] ?? ""} · ${top.awarenessTypeName.toLowerCase()}</span>` : nothing}
+        ${top ? html`<br /><span class=${`ipma ${top.awarenessLevelID}`}><i></i>${tr("Aviso {level}", { level: tr(({ yellow: "amarelo", orange: "laranja", red: "vermelho" } as Record<string, string>)[top.awarenessLevelID] ?? "") })} · ${tr(top.awarenessTypeName).toLowerCase()}</span>` : nothing}
       </div>
       <div class="strip">
         ${rooms.map((r) => {
           const on = roomLights(r).filter((id) => this.entities[id]?.state === "on").length;
           return html`<button class=${classMap({ q: true, on: on > 0 })} @click=${() => this.openRoom(r.id)}>
-            <i>${icon(roomIcon(r.icon))}</i><span>${r.name}<small>${on ? `${on} luz${on > 1 ? "es" : ""}` : "apagada"}</small></span>
+            <i>${icon(roomIcon(r.icon))}</i><span>${r.name}<small>${on ? trn(on, "{n} luz", "{n} luzes") : tr("apagada")}</small></span>
           </button>`;
         })}
         ${climate && cs
           ? html`<button class=${classMap({ q: true, on: cs.state !== "off" })} @click=${() => this.openRoom("@clima")}>
-              <i>${icon(ICONS.therm)}</i><span>${cs.state === "off" ? "Off" : `${fmt((cs.attributes.temperature as number) ?? 0)}°`}<small>clima</small></span>
+              <i>${icon(ICONS.therm)}</i><span>${cs.state === "off" ? "Off" : `${fmt((cs.attributes.temperature as number) ?? 0)}°`}<small>${tr("clima")}</small></span>
             </button>`
           : nothing}
         ${lock && ls
           ? html`<button class=${classMap({ q: true, alert: ls.state === "unlocked" })}
                 @click=${() => (ls.state === "locked" ? (this.sheet = lock.id) : this.call("lock", "lock", lock.id))}>
-              <i>${icon(ls.state === "locked" ? ICONS.lock : ICONS.unlock)}</i><span>${lock.name}<small>${ls.state === "locked" ? "trancada" : "destrancada · tocar"}</small></span>
+              <i>${icon(ls.state === "locked" ? ICONS.lock : ICONS.unlock)}</i><span>${lock.name}<small>${ls.state === "locked" ? tr("trancada") : tr("destrancada · tocar")}</small></span>
             </button>`
           : nothing}
       </div>`;
@@ -136,14 +137,14 @@ export class Pine3Moldura extends Pine3Vidro {
       "clear-night": "Céu limpo", cloudy: "Nublado", fog: "Nevoeiro", lightning: "Trovoada", "lightning-rainy": "Trovoada e chuva",
       partlycloudy: "Pouco nublado", pouring: "Chuva forte", rainy: "Chuva", snowy: "Neve", sunny: "Sol", windy: "Vento",
     };
-    return W[state] ?? state;
+    return W[state] ? tr(W[state]) : state;
   }
 
   /** Divisões in the panel: one card per room. */
   private renderRoomList() {
     const rooms = this.home.rooms.filter((r) => !r.hidden && r.devices.some((d) => !d.hidden));
     const on = summary(this.home, this.entities).lightsOn;
-    return html`<div class="rtop"><b>Divisões</b><span>${on ? `${on} luz${on > 1 ? "es" : ""} acesa${on > 1 ? "s" : ""}` : "tudo apagado"}</span></div>
+    return html`<div class="rtop"><b>${tr("Divisões")}</b><span>${on ? trn(on, "{n} luz acesa", "{n} luzes acesas") : tr("tudo apagado")}</span></div>
       <div class="grid">${rooms.map((r) => {
         const lights = roomLights(r);
         const n = lights.filter((id) => this.entities[id]?.state === "on").length;

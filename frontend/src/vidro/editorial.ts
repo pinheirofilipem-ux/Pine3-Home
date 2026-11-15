@@ -6,19 +6,21 @@ import { css, html, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { Pine3Vidro } from "./vidro";
+import { getLang, locale, tr, trMap, trn, trNames } from "../lib/i18n";
 import { vidroStyles } from "./styles";
 import { brightness, domainOf, fmt, roomLights, roomLine, summary } from "./model";
 import type { Room } from "../lib/types";
 
-const PAGES = [
+const PAGES = trNames([
   { id: "home", name: "Casa" },
   { id: "@divisoes", name: "Divisões" },
   { id: "@clima", name: "Clima" },
   { id: "@seguranca", name: "Segurança" },
   { id: "@cenas", name: "Cenas" },
-];
+]);
 const WORDS = ["nenhuma", "uma", "duas", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez"];
-const LEVELS: Record<string, string> = { yellow: "amarelo", orange: "laranja", red: "vermelho" };
+const WORDS_EN = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+const LEVELS: Record<string, string> = trMap({ yellow: "amarelo", orange: "laranja", red: "vermelho" });
 
 @customElement("pine3-editorial")
 export class Pine3Editorial extends Pine3Vidro {
@@ -37,15 +39,15 @@ export class Pine3Editorial extends Pine3Vidro {
     const cur = room ? "@divisoes" : this.view;
     const n = Math.max(0, pages.findIndex((p) => p.id === cur));
     return html`<div class=${classMap({ vd: true, editorial: true, editing: !!this.editing })}>
-      <nav class="toc" aria-label="Índice">
+      <nav class="toc" aria-label=${tr("Índice")}>
         ${pages.map((p) => html`<button class=${classMap({ on: p.id === cur })} @click=${() => this.openRoom(p.id)}>${p.name}</button>`)}
         ${this.renderGear("egear")}
-        <span class="no">N.º ${n + 1} / ${pages.length}</span>
+        <span class="no">${tr("N.º")} ${n + 1} / ${pages.length}</span>
       </nav>
       <main class="main">${room
         ? this.renderRoom(room)
         : this.view === "@divisoes"
-          ? html`<div class="rtop"><b>Divisões</b><span>${this.lightsLine()}</span></div>${this.renderList(true)}`
+          ? html`<div class="rtop"><b>${tr("Divisões")}</b><span>${this.lightsLine()}</span></div>${this.renderList(true)}`
           : this.view.startsWith("@")
             ? this.renderView(this.view)
             : this.renderHome()}</main>
@@ -55,7 +57,7 @@ export class Pine3Editorial extends Pine3Vidro {
 
   private lightsLine(): string {
     const n = summary(this.home, this.entities).lightsOn;
-    return n ? `${n} luz${n > 1 ? "es" : ""} acesa${n > 1 ? "s" : ""}` : "tudo apagado";
+    return n ? trn(n, "{n} luz acesa", "{n} luzes acesas") : tr("tudo apagado");
   }
 
   /** "A casa está acolhedora: quatro luzes, 21 graus, e a porta da entrada ainda destrancada." */
@@ -65,10 +67,19 @@ export class Pine3Editorial extends Pine3Vidro {
       .map((r) => (r.temperature ? parseFloat(this.entities[r.temperature]?.state ?? "") : NaN))
       .filter((t) => !Number.isNaN(t));
     const t = temps.length ? Math.round(temps.reduce((a, b) => a + b, 0) / temps.length) : null;
-    const mood = s.lightsOn >= 4 ? "acolhedora" : s.lightsOn ? "calma" : "às escuras";
-    const lights = `${WORDS[s.lightsOn] ?? s.lightsOn} ${s.lightsOn === 1 ? "luz" : "luzes"}`;
     const lock = this.home.rooms.flatMap((r) => r.devices).find((d) => !d.hidden && domainOf(d.id) === "lock");
     const ls = lock ? this.entities[lock.id]?.state : undefined;
+    if (getLang() === "en") {
+      const mood = s.lightsOn >= 4 ? "cosy" : s.lightsOn ? "calm" : "dark";
+      const lights = `${WORDS_EN[s.lightsOn] ?? s.lightsOn} ${s.lightsOn === 1 ? "light" : "lights"}`;
+      const door = lock && ls
+        ? ls === "locked" ? html`the ${lock.name.toLowerCase()} locked` : html`the ${lock.name.toLowerCase()} <em>still unlocked</em>`
+        : null;
+      const parts = [lights, t != null ? `${t} degrees` : null].filter(Boolean).join(", ");
+      return html`The house is <em>${mood}</em>: ${parts}${door ? html`, and ${door}` : nothing}.`;
+    }
+    const mood = s.lightsOn >= 4 ? "acolhedora" : s.lightsOn ? "calma" : "às escuras";
+    const lights = `${WORDS[s.lightsOn] ?? s.lightsOn} ${s.lightsOn === 1 ? "luz" : "luzes"}`;
     const door = lock && ls
       ? ls === "locked"
         ? html`a ${lock.name.toLowerCase()} trancada`
@@ -79,7 +90,7 @@ export class Pine3Editorial extends Pine3Vidro {
   }
 
   protected renderHome() {
-    const time = this.now.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }).split(":");
+    const time = this.now.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" }).split(":");
     const w = this.home.weather ? this.entities[this.home.weather] : undefined;
     const t = w?.attributes.temperature as number | undefined;
     const top = this.warnings[0];
@@ -93,8 +104,8 @@ export class Pine3Editorial extends Pine3Vidro {
               ${((this.entities[id].attributes.friendly_name as string) ?? id).toLowerCase()}</button>`)}</div>`
           : nothing}
         <div class="meta">
-          ${w ? html`<div>Lá fora<b>${t != null ? `${Math.round(t)}°, ` : ""}${this.weatherWord(w.state)}</b></div>` : nothing}
-          ${top ? html`<div class="warnm">Aviso ${LEVELS[top.awarenessLevelID] ?? ""}<b>${top.awarenessTypeName.toLowerCase()}</b></div>` : nothing}
+          ${w ? html`<div>${tr("Lá fora")}<b>${t != null ? `${Math.round(t)}°, ` : ""}${this.weatherWord(w.state)}</b></div>` : nothing}
+          ${top ? html`<div class="warnm">${tr("Aviso {level}", { level: LEVELS[top.awarenessLevelID] ?? "" })}<b>${tr(top.awarenessTypeName).toLowerCase()}</b></div>` : nothing}
         </div>
       </div>
       ${this.renderList(false)}
@@ -106,7 +117,7 @@ export class Pine3Editorial extends Pine3Vidro {
       "clear-night": "céu limpo", cloudy: "nublado", fog: "nevoeiro", lightning: "trovoada", "lightning-rainy": "trovoada",
       partlycloudy: "pouco nublado", pouring: "chuva forte", rainy: "chuva", snowy: "neve", sunny: "sol", windy: "vento",
     };
-    return W[state] ?? state;
+    return W[state] ? tr(W[state]) : state;
   }
 
   /** The list of rooms: the name opens it in place, on/off switches its lights. */
@@ -128,15 +139,15 @@ export class Pine3Editorial extends Pine3Vidro {
         <button class="nmb" aria-expanded=${open} @click=${() => (this.open = open ? null : r.id)}>${r.name}</button>
         <span>${sub}</span>
         ${unlocked
-          ? html`<button class="tg warn" @click=${() => this.call("lock", "lock", lock!.id)}>trancar</button>`
+          ? html`<button class="tg warn" @click=${() => this.call("lock", "lock", lock!.id)}>${tr("trancar")}</button>`
           : lights.length
             ? html`<button class="tg" @click=${() => this.call("light", on ? "turn_off" : "turn_on", lights)}>${on ? "on" : "off"}</button>`
-            : html`<button class="tg" @click=${() => this.openRoom(r.id)}>abrir</button>`}
+            : html`<button class="tg" @click=${() => this.openRoom(r.id)}>${tr("abrir")}</button>`}
       </div>
       ${open
         ? html`<div class="ctrls">
             ${lights.map((id) => this.lineControl(id, r))}
-            <button class="more" @click=${() => this.openRoom(r.id)}>ver tudo em ${r.name.toLowerCase()} →</button>
+            <button class="more" @click=${() => this.openRoom(r.id)}>${tr("ver tudo em {room}", { room: r.name.toLowerCase() })} →</button>
           </div>`
         : nothing}
     </div>`;

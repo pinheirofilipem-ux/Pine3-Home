@@ -6,17 +6,18 @@ import { css, html, nothing, svg } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { Pine3Vidro, WEATHER } from "./vidro";
+import { locale, tr, trMap, trn, trNames } from "../lib/i18n";
 import { vidroStyles } from "./styles";
 import { brightness, domainOf, fmt, roomLights, summary } from "./model";
 import type { Room } from "../lib/types";
 
-const KEYS = [
+const KEYS = trNames([
   { id: "home", name: "Casa" },
   { id: "@divisoes", name: "Div." },
   { id: "@clima", name: "Clima" },
   { id: "@seguranca", name: "Seg." },
   { id: "@cenas", name: "Cenas" },
-];
+]);
 const DIAL = 270; // degrees of travel
 const T_MIN = 16;
 const T_MAX = 30;
@@ -34,12 +35,12 @@ export class Pine3Instrumento extends Pine3Vidro {
     const keys = KEYS.filter((k) => k.id === "home" || k.id === "@divisoes" || this.viewWidgets(k.id).length);
     const alerts = summary(this.home, this.entities).alerts;
     return html`<div class=${classMap({ vd: true, instrumento: true, editing: !!this.editing })}>
-      <nav class="bank" aria-label="Vistas">
+      <nav class="bank" aria-label=${tr("Vistas")}>
         ${keys.map((k) => html`<button class=${classMap({ key: true, on: k.id === cur })} @click=${() => this.openRoom(k.id)}>
           <span class=${classMap({ led: true, on: k.id === cur, alarm: k.id === "@seguranca" && alerts > 0 })}></span>${k.name}
         </button>`)}
         ${this.settingsButton
-          ? html`<button class="key set" @click=${() => this.dispatchEvent(new CustomEvent("pine3-settings", { bubbles: true, composed: true }))}><span class="led"></span>Def.</button>`
+          ? html`<button class="key set" @click=${() => this.dispatchEvent(new CustomEvent("pine3-settings", { bubbles: true, composed: true }))}><span class="led"></span>${tr("Def.")}</button>`
           : nothing}
       </nav>
       <main class="main">${room
@@ -64,18 +65,18 @@ export class Pine3Instrumento extends Pine3Vidro {
     const scenes = [...this.home.scenes, ...this.home.scripts].filter((id) => this.entities[id]).slice(0, 3);
     const lock = this.home.rooms.flatMap((r) => r.devices).find((d) => !d.hidden && domainOf(d.id) === "lock");
     const locked = lock ? this.entities[lock.id]?.state === "locked" : true;
-    const date = this.now.toLocaleDateString("pt-PT", { weekday: "short", day: "numeric", month: "short" }).replace(/\./g, "");
+    const date = this.now.toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" }).replace(/\./g, "");
     return html`<div class="console">
       <section class="mod disp">
-        <div class="lab"><span>Hora</span><span>${date}</span></div>
-        <b>${this.now.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}</b>
-        <span class="ln">${w ? `${t != null ? `${Math.round(t)}° · ` : ""}${WEATHER[w.state] ?? w.state}` : ""}${top ? ` · aviso ${top.awarenessTypeName.toLowerCase()}` : ""}</span>
+        <div class="lab"><span>${tr("Hora")}</span><span>${date}</span></div>
+        <b>${this.now.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" })}</b>
+        <span class="ln">${w ? `${t != null ? `${Math.round(t)}° · ` : ""}${WEATHER[w.state] ?? w.state}` : ""}${top ? ` · ${tr("aviso {type}", { type: tr(top.awarenessTypeName).toLowerCase() })}` : ""}</span>
         <div class="keys">
           ${scenes.map((id, k) => html`<button class=${classMap({ btn: true, on: this.flash === id })} @click=${() => this.tap({ key: id, kind: "scene", size: "s", name: "", entity: id })}>
             ${k + 1} ${((this.entities[id].attributes.friendly_name as string) ?? id).split(" ")[0]}</button>`)}
           ${lock
             ? html`<button class=${classMap({ btn: true, lockw: !locked })} @click=${() => (locked ? (this.sheet = lock.id) : this.call("lock", "lock", lock.id))}>
-                <span class=${classMap({ led: true, g: locked, on: true })}></span>${locked ? "Tranc." : "Porta"}</button>`
+                <span class=${classMap({ led: true, g: locked, on: true })}></span>${locked ? tr("Tranc.") : tr("Porta")}</button>`
             : nothing}
         </div>
       </section>
@@ -88,7 +89,7 @@ export class Pine3Instrumento extends Pine3Vidro {
   /** The thermostat as a rotary dial: drag around it to set the temperature. */
   private renderKnob() {
     const climate = this.home.rooms.flatMap((r) => r.devices.map((d) => ({ d, r }))).find(({ d }) => !d.hidden && domainOf(d.id) === "climate");
-    if (!climate) return html`<section class="mod knob"><div class="lab"><span>Clima</span></div><p class="k">Sem termóstato</p></section>`;
+    if (!climate) return html`<section class="mod knob"><div class="lab"><span>${tr("Clima")}</span></div><p class="k">${tr("Sem termóstato")}</p></section>`;
     const s = this.entities[climate.d.id];
     const on = !!s && s.state !== "off";
     const min = (s?.attributes.min_temp as number) ?? T_MIN;
@@ -111,11 +112,11 @@ export class Pine3Instrumento extends Pine3Vidro {
       return Math.round((min + g * (max - min)) / step) * step;
     };
     const modes = ((s?.attributes.hvac_modes as string[]) ?? []).filter((m) => ["cool", "heat", "off", "auto", "heat_cool"].includes(m)).slice(0, 3);
-    const names: Record<string, string> = { cool: "Frio", heat: "Calor", off: "Off", auto: "Auto", heat_cool: "Auto" };
+    const names: Record<string, string> = trMap({ cool: "Frio", heat: "Calor", off: "Off", auto: "Auto", heat_cool: "Auto" });
     const cur = s?.attributes.current_temperature as number | undefined;
     return html`<section class="mod knob">
-      <div class="lab"><span>Clima · ${climate.r.name}${cur != null ? ` · ${fmt(cur)}°` : ""}</span><span class=${classMap({ led: true, on })}></span></div>
-      <div class="dialw" role="slider" aria-label="Temperatura" aria-valuenow=${target} aria-valuemin=${min} aria-valuemax=${max}
+      <div class="lab"><span>${tr("Clima")} · ${climate.r.name}${cur != null ? ` · ${fmt(cur)}°` : ""}</span><span class=${classMap({ led: true, on })}></span></div>
+      <div class="dialw" role="slider" aria-label=${tr("Temperatura")} aria-valuenow=${target} aria-valuemin=${min} aria-valuemax=${max}
         @pointerdown=${(e: PointerEvent) => { if (!on) return; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); this.dial = toTemp(e); }}
         @pointermove=${(e: PointerEvent) => { if (this.dial != null && e.buttons) this.dial = toTemp(e); }}
         @pointerup=${(e: PointerEvent) => {
@@ -126,7 +127,7 @@ export class Pine3Instrumento extends Pine3Vidro {
         }}>
         <svg viewBox="0 0 100 100" aria-hidden="true">${ticks}</svg>
         <div class="kn"><i style=${`transform:rotate(${on ? ang : -DIAL / 2}deg)`}></i></div>
-        <div class="ktx"><div>${on ? `${fmt(target)}°` : "off"}<small>${on ? "roda" : "desligado"}</small></div></div>
+        <div class="ktx"><div>${on ? `${fmt(target)}°` : "off"}<small>${on ? tr("roda") : tr("desligado")}</small></div></div>
       </div>
       <div class="keys">${modes.map((m) => html`<button class=${classMap({ btn: true, on: s?.state === m })} @click=${() => this.call("climate", "set_hvac_mode", climate.d.id, { hvac_mode: m })}>${names[m]}</button>`)}</div>
     </section>`;
@@ -173,15 +174,15 @@ export class Pine3Instrumento extends Pine3Vidro {
     const rooms = full ? this.home.rooms.filter((r) => !r.hidden && r.devices.some((d) => !d.hidden)) : this.lightRooms().slice(0, 6);
     const lit = summary(this.home, this.entities).lightsOn;
     return html`<section class=${classMap({ mod: true, sw: true, full })}>
-      <div class="lab"><span>${full ? "Divisões" : "Luzes"}</span><span>${lit} acesa${lit === 1 ? "" : "s"}</span></div>
+      <div class="lab"><span>${full ? tr("Divisões") : tr("Luzes")}</span><span>${trn(lit, "{n} acesa", "{n} acesas")}</span></div>
       <div class="rows">${rooms.map((r) => {
         const lights = roomLights(r);
         const on = lights.filter((id) => this.entities[id]?.state === "on");
         const max = on.length ? Math.max(...on.map((id) => brightness(this.entities[id]))) : 0;
         return html`<div class="rk">
-          <button class=${classMap({ rocker: true, on: on.length > 0 })} aria-label=${`Luzes de ${r.name}`} ?disabled=${!lights.length}
+          <button class=${classMap({ rocker: true, on: on.length > 0 })} aria-label=${tr("Luzes de {room}", { room: r.name })} ?disabled=${!lights.length}
             @click=${() => this.call("light", on.length ? "turn_off" : "turn_on", lights)}><i></i></button>
-          <button class="rkn" @click=${() => this.openRoom(r.id)}><b>${r.name}</b><span>${lights.length ? (on.length ? `${max}%` : "off") : `${r.devices.length} disp.`}</span></button>
+          <button class="rkn" @click=${() => this.openRoom(r.id)}><b>${r.name}</b><span>${lights.length ? (on.length ? `${max}%` : "off") : tr("{n} disp.", { n: r.devices.length })}</span></button>
         </div>`;
       })}</div>
     </section>`;

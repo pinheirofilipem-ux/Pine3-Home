@@ -13,13 +13,14 @@ import {
 import { ROOM_ICON_CHOICES, roomIconPath } from "./vidro/icons";
 import { DEVICE_TYPES, TYPES_FOR, autoType, type DeviceType } from "./lib/devtypes";
 import { styleTag, STYLE_SWATCH } from "./lib/styles";
+import { getLang, locale, setLang, tr, trMap, trn, trNames } from "./lib/i18n";
 import {
   AMBIENT_AFTER, AMBIENT_BRIGHTNESS, IPMA_AREAS, READY_STYLES, STYLE_NAMES, THEME_NAMES,
   type Dashboard, type Home, type HomeSettings, type PendingCode, type Room, type RoomEntity, type Screen, type Style,
 } from "./lib/types";
 
 type Section = "aparencia" | "divisoes" | "entidades" | "ambiente" | "casa" | "ecras" | "sistema";
-const SECTIONS: Array<{ id: Section; name: string; icon: string }> = [
+const SECTIONS: Array<{ id: Section; name: string; icon: string }> = trNames([
   { id: "aparencia", name: "Aparência", icon: mdiPaletteOutline },
   { id: "divisoes", name: "Divisões", icon: mdiViewGridOutline },
   { id: "entidades", name: "Entidades", icon: mdiFormatListChecks },
@@ -27,11 +28,11 @@ const SECTIONS: Array<{ id: Section; name: string; icon: string }> = [
   { id: "casa", name: "Casa", icon: mdiHomeOutline },
   { id: "ecras", name: "Ecrãs e painéis", icon: mdiTabletDashboard },
   { id: "sistema", name: "Sistema", icon: mdiCogOutline },
-];
+]);
 const STYLES: Style[] = ["vidro", "bento", "moldura", "editorial", "instrumento", "orbita", "carteira", "lente"];
-const NAV_OF: Record<string, string> = {
+const NAV_OF: Record<string, string> = trMap({
   bento: "pílulas no topo", orbita: "uma roda que abre do botão em baixo", carteira: "separadores à direita, como cartões numa carteira", lente: "afastar para ver todas as vistas (botão ou pinça) e tocar numa para aproximar", moldura: "deslizar, com pontos no canto", editorial: "índice em palavras", instrumento: "banco de teclas",
-};
+});
 const PREVIEW_W = 1334;
 const PREVIEW_H = 800;
 
@@ -125,7 +126,7 @@ export class Pine3Settings extends LitElement {
       await fn();
       if (ok) this.message = { ok: true, text: ok };
     } catch (err) {
-      this.message = { ok: false, text: (err as { message?: string }).message ?? String(err) };
+      this.message = { ok: false, text: tr((err as { message?: string }).message ?? String(err)) };
     }
   }
 
@@ -177,17 +178,17 @@ export class Pine3Settings extends LitElement {
   render() {
     if (!this.dash) return nothing;
     return html`<div class="wrap">
-      <nav class="side" aria-label="Definições">
+      <nav class="side" aria-label=${tr("Definições")}>
         <div class="top">
-          <button class="x" aria-label="Fechar as definições" @click=${() => this.close()}>${icon(mdiClose)}</button>
-          <b>Definições</b>
+          <button class="x" aria-label=${tr("Fechar as definições")} @click=${() => this.close()}>${icon(mdiClose)}</button>
+          <b>${tr("Definições")}</b>
         </div>
         ${SECTIONS.map((s) => html`<button class=${classMap({ item: true, on: s.id === this.section })} @click=${() => { this.section = s.id; this.message = null; void this.loadPending(); }}>
           <i>${icon(s.icon)}</i>${s.name}</button>`)}
         ${Object.keys(this.original).length
-          ? html`<button class="undo" @click=${() => this.undo()}>Desfazer alterações</button>`
+          ? html`<button class="undo" @click=${() => this.undo()}>${tr("Desfazer alterações")}</button>`
           : nothing}
-        <button class="done" @click=${() => this.close()}>Concluído</button>
+        <button class="done" @click=${() => this.close()}>${tr("Concluído")}</button>
       </nav>
       <main class="content">
         ${this.message ? html`<p class=${classMap({ msg: true, bad: !this.message.ok })} role="status">${this.message.text}</p>` : nothing}
@@ -205,7 +206,7 @@ export class Pine3Settings extends LitElement {
   private dashPicker() {
     if (this.dashboards.length < 2) return nothing;
     return html`<div class="dpick">
-      <span>A editar o painel</span>
+      <span>${tr("A editar o painel")}</span>
       ${this.dashboards.map((d) => html`<button class=${classMap({ chip: true, on: d.id === this.dash.id })} @click=${() => this.emit("dashboard-select", d.id)}>${d.name}</button>`)}
     </div>`;
   }
@@ -215,43 +216,43 @@ export class Pine3Settings extends LitElement {
     const tag = styleTag(d.style);
     const vidro = d.style === "vidro";
     return html`<section class="card">
-        <h2>Aparência</h2>
-        <p class="muted">O estilo, o tema e a navegação do painel <b>${d.name}</b>. Vês o resultado já aqui; fica guardado no Home Assistant para todos os ecrãs que mostram este painel.</p>
+        <h2>${tr("Aparência")}</h2>
+        <p class="muted">${tr("O estilo, o tema e a navegação do painel")} <b>${d.name}</b>. ${tr("Vês o resultado já aqui; fica guardado no Home Assistant para todos os ecrãs que mostram este painel.")}</p>
         ${this.dashPicker()}
-        <div class="pv" style=${`height:${Math.round(PREVIEW_H * this.scale)}px`} aria-label="Pré-visualização">
+        <div class="pv" style=${`height:${Math.round(PREVIEW_H * this.scale)}px`} aria-label=${tr("Pré-visualização")}>
           <div class="pvin" style=${`transform:scale(${this.scale})`}>
             ${shtml`<${tag} .home=${this.home} .entities=${this.entities} .dashboard=${d} .conn=${this.conn} .startView=${this.pvView}></${tag}>`}
           </div>
         </div>
-        <div class="pvviews" aria-label="Vista na pré-visualização">
+        <div class="pvviews" aria-label=${tr("Vista na pré-visualização")}>
           ${this.previewViews().map(([id, n]) => html`<button class=${classMap({ chip: true, on: id === this.pvView })} @click=${() => (this.pvView = id)}>${n}</button>`)}
         </div>
       </section>
       <section class="card">
-        <h3>Estilo</h3>
+        <h3>${tr("Estilo")}</h3>
         <div class="styles">${STYLES.map((s) => {
           const ready = READY_STYLES.includes(s);
           return html`<button class=${classMap({ sty: true, on: s === d.style })} ?disabled=${!ready} aria-pressed=${s === d.style}
             @click=${() => this.save({ style: s })}>
             ${ready ? this.thumb(s) : html`<i style=${`background:${STYLE_SWATCH[s]}`}></i>`}
-            <span>${STYLE_NAMES[s]}${ready ? "" : html`<small>em breve</small>`}</span></button>`;
+            <span>${STYLE_NAMES[s]}${ready ? "" : html`<small>${tr("em breve")}</small>`}</span></button>`;
         })}</div>
       </section>
       <section class="card">
-        <h3>Tema</h3>
-        <p class="muted">${vidro ? "Claro, escuro, ou escuro ao pôr do sol." : "Só no Vidro: os outros estilos têm a sua própria paleta."}</p>
+        <h3>${tr("Tema")}</h3>
+        <p class="muted">${vidro ? tr("Claro, escuro, ou escuro ao pôr do sol.") : tr("Só no Vidro: os outros estilos têm a sua própria paleta.")}</p>
         <div class="seg">${Object.entries(THEME_NAMES).map(([k, n]) => html`<button class=${classMap({ on: k === d.theme })} ?disabled=${!vidro} @click=${() => this.save({ theme: k })}>${n}</button>`)}</div>
       </section>
       <section class="card">
-        <h3>Navegação</h3>
-        <p class="muted">${vidro ? "A dock do Vidro, à esquerda ou em baixo." : `Este estilo navega com ${NAV_OF[d.style] ?? "a sua própria navegação"}.`}</p>
-        <div class="seg">${[["left", "Dock à esquerda"], ["bottom", "Dock em baixo"]].map(([k, n]) => html`<button class=${classMap({ on: k === d.dock })} ?disabled=${!vidro} @click=${() => this.save({ dock: k as Dashboard["dock"] })}>${n}</button>`)}</div>
+        <h3>${tr("Navegação")}</h3>
+        <p class="muted">${vidro ? tr("A dock do Vidro, à esquerda ou em baixo.") : tr("Este estilo navega com {nav}.", { nav: NAV_OF[d.style] ?? tr("a sua própria navegação") })}</p>
+        <div class="seg">${[["left", tr("Dock à esquerda")], ["bottom", tr("Dock em baixo")]].map(([k, n]) => html`<button class=${classMap({ on: k === d.dock })} ?disabled=${!vidro} @click=${() => this.save({ dock: k as Dashboard["dock"] })}>${n}</button>`)}</div>
       </section>
       <section class="card">
-        <h3>Editar a grelha nos ecrãs</h3>
+        <h3>${tr("Editar a grelha nos ecrãs")}</h3>
         <div class="row">
-          <span>Os tablets que mostram este painel podem mudar a ordem, o tamanho e os cartões de cada vista (o lápis).</span>
-          <button class="sw" role="switch" aria-checked=${d.screen_edit !== false} aria-label="Editar a grelha nos ecrãs"
+          <span>${tr("Os tablets que mostram este painel podem mudar a ordem, o tamanho e os cartões de cada vista (o lápis).")}</span>
+          <button class="sw" role="switch" aria-checked=${d.screen_edit !== false} aria-label=${tr("Editar a grelha nos ecrãs")}
             @click=${() => this.save({ screen_edit: d.screen_edit === false })}></button>
         </div>
       </section>`;
@@ -260,31 +261,41 @@ export class Pine3Settings extends LitElement {
   private renderAmbient() {
     const d = this.dash;
     return html`<section class="card">
-        <h2>Face ambiente</h2>
-        <p class="muted">Um relógio calmo com o tempo e a casa numa linha, depois de alguns minutos sem tocar no ecrã. O primeiro toque só acorda.</p>
+        <h2>${tr("Face ambiente")}</h2>
+        <p class="muted">${tr("Um relógio calmo com o tempo e a casa numa linha, depois de alguns minutos sem tocar no ecrã. O primeiro toque só acorda.")}</p>
         ${this.dashPicker()}
-        <h3>Aparece depois de</h3>
-        <div class="seg">${AMBIENT_AFTER.map(([v, n]) => html`<button class=${classMap({ on: v === (d.ambient_after ?? 2) })} @click=${() => this.save({ ambient_after: v })}>${n}</button>`)}</div>
+        <h3>${tr("Aparece depois de")}</h3>
+        <div class="seg">${AMBIENT_AFTER.map(([v, n]) => html`<button class=${classMap({ on: v === (d.ambient_after ?? 2) })} @click=${() => this.save({ ambient_after: v })}>${tr(n)}</button>`)}</div>
       </section>
       <section class="card">
-        <h3>Brilho na face ambiente</h3>
-        <p class="muted">Só nos tablets com a app Pine3 Wallpanel. Fora da face ambiente, o brilho é o do sistema.</p>
+        <h3>${tr("Brilho na face ambiente")}</h3>
+        <p class="muted">${tr("Só nos tablets com a app Pine3 Wallpanel. Fora da face ambiente, o brilho é o do sistema.")}</p>
         <div class="seg">${Object.entries(AMBIENT_BRIGHTNESS).map(([k, n]) => html`<button class=${classMap({ on: k === (d.ambient_brightness ?? "auto") })} @click=${() => this.save({ ambient_brightness: k as Dashboard["ambient_brightness"] })}>${n}</button>`)}</div>
       </section>`;
   }
 
   private renderHouse() {
     const area = this.home.settings?.ipma_area ?? "";
+    const language = this.hs.language ?? "auto";
+    const setLanguage = (v: "auto" | "pt" | "en") => {
+      // shown at once: the settings and the preview change language now, every screen when it is saved
+      setLang(v, this.home.language);
+      void this.saveHouse({ language: v });
+    };
     return html`<section class="card">
-      <h2>Casa</h2>
-      <p class="muted">O que é da casa e vale para todos os painéis.</p>
-      <h3>Avisos do IPMA</h3>
-      <p class="muted">Os avisos da tua área aparecem no cartão do tempo, na face ambiente e no topo de cada estilo.</p>
-      <select class="sel" aria-label="Área dos avisos do IPMA" @change=${(e: Event) => {
+      <h2>${tr("Casa")}</h2>
+      <p class="muted">${tr("O que é da casa e vale para todos os painéis.")}</p>
+      <h3>${getLang() === "pt" ? "Idioma · Language" : "Language · Idioma"}</h3>
+      <p class="muted">${tr("Dos painéis, dos ecrãs e destas definições. Automático segue o idioma do Home Assistant.")}</p>
+      <div class="seg">${([["auto", tr("Automático")], ["pt", "Português"], ["en", "English"]] as const).map(([k, n]) =>
+        html`<button class=${classMap({ on: k === language })} @click=${() => setLanguage(k)}>${n}</button>`)}</div>
+      <h3>${tr("Avisos do IPMA")}</h3>
+      <p class="muted">${tr("Os avisos da tua área aparecem no cartão do tempo, na face ambiente e no topo de cada estilo.")}</p>
+      <select class="sel" aria-label=${tr("Área dos avisos do IPMA")} @change=${(e: Event) => {
         const v = (e.target as HTMLSelectElement).value;
-        void this.run(() => this.ws({ type: "pine3_home/home/settings", ipma_area: v || null }), v ? `Avisos do IPMA: ${IPMA_AREAS[v]}.` : "Avisos do IPMA desligados.");
+        void this.run(() => this.ws({ type: "pine3_home/home/settings", ipma_area: v || null }), v ? tr("Avisos do IPMA: {area}.", { area: IPMA_AREAS[v] }) : tr("Avisos do IPMA desligados."));
       }}>
-        <option value="" ?selected=${!area}>Sem avisos</option>
+        <option value="" ?selected=${!area}>${tr("Sem avisos")}</option>
         ${Object.entries(IPMA_AREAS).map(([k, n]) => html`<option value=${k} ?selected=${k === area}>${n}</option>`)}
       </select>
     </section>`;
@@ -293,65 +304,65 @@ export class Pine3Settings extends LitElement {
   private renderScreens() {
     const screenUrl = `${location.origin}/pine3/ecra`;
     return html`<section class="card">
-        <h2>Emparelhar um ecrã</h2>
-        <p class="muted">No tablet, abre <b>${screenUrl}</b>. Aparece um código de 6 algarismos: escreve-o aqui, ou lê o QR com o telemóvel.</p>
+        <h2>${tr("Emparelhar um ecrã")}</h2>
+        <p class="muted">${tr("No tablet, abre")} <b>${screenUrl}</b>. ${tr("Aparece um código de 6 algarismos: escreve-o aqui, ou lê o QR com o telemóvel.")}</p>
         <div class="pair">
-          <input class="code" inputmode="numeric" maxlength="6" placeholder="000000" aria-label="Código do ecrã" .value=${this.code}
+          <input class="code" inputmode="numeric" maxlength="6" placeholder="000000" aria-label=${tr("Código do ecrã")} .value=${this.code}
             @input=${(e: Event) => (this.code = (e.target as HTMLInputElement).value.replace(/\D/g, "").slice(0, 6))} />
-          <input class="txt" maxlength="40" placeholder="Nome, p.ex. Cozinha" aria-label="Nome do ecrã" .value=${this.screenName}
+          <input class="txt" maxlength="40" placeholder=${tr("Nome, p.ex. Cozinha")} aria-label=${tr("Nome do ecrã")} .value=${this.screenName}
             @input=${(e: Event) => (this.screenName = (e.target as HTMLInputElement).value)} />
-          <button class="pri" ?disabled=${this.code.length !== 6} @click=${() => this.approve()}>Emparelhar com ${this.dash.name}</button>
+          <button class="pri" ?disabled=${this.code.length !== 6} @click=${() => this.approve()}>${tr("Emparelhar com {name}", { name: this.dash.name })}</button>
         </div>
         ${this.pending.length
-          ? html`<p class="muted">À espera: ${this.pending.map((p) => html`<button class="chip" @click=${() => (this.code = p.code)}>${p.code}</button>`)}</p>`
+          ? html`<p class="muted">${tr("À espera:")} ${this.pending.map((p) => html`<button class="chip" @click=${() => (this.code = p.code)}>${p.code}</button>`)}</p>`
           : nothing}
       </section>
       <section class="card">
-        <h3>Ecrãs</h3>
+        <h3>${tr("Ecrãs")}</h3>
         ${this.screens.length
           ? html`<div class="list">${this.screens.map((s) => html`<div class="row">
               <i class="thumb" style=${`background:${STYLE_SWATCH[this.dashboards.find((d) => d.id === s.dashboard)?.style ?? "vidro"]}`}></i>
-              <span class="grow"><input class="txt inline" .value=${s.name} aria-label="Nome do ecrã" @change=${(e: Event) => this.updateScreen(s, { name: (e.target as HTMLInputElement).value.trim() || s.name })} />
-                <small>${s.active === false ? "token revogado" : s.last_used ? `visto ${new Date(s.last_used).toLocaleString("pt-PT")}` : "ainda não ligou"}</small></span>
-              <select class="sel" aria-label=${`Painel de ${s.name}`} @change=${(e: Event) => this.updateScreen(s, { dashboard: (e.target as HTMLSelectElement).value })}>
+              <span class="grow"><input class="txt inline" .value=${s.name} aria-label=${tr("Nome do ecrã")} @change=${(e: Event) => this.updateScreen(s, { name: (e.target as HTMLInputElement).value.trim() || s.name })} />
+                <small>${s.active === false ? tr("token revogado") : s.last_used ? tr("visto {when}", { when: new Date(s.last_used).toLocaleString(locale()) }) : tr("ainda não ligou")}</small></span>
+              <select class="sel" aria-label=${tr("Painel de {name}", { name: s.name })} @change=${(e: Event) => this.updateScreen(s, { dashboard: (e.target as HTMLSelectElement).value })}>
                 ${this.dashboards.map((d) => html`<option value=${d.id} ?selected=${d.id === s.dashboard}>${d.name} · ${STYLE_NAMES[d.style]}</option>`)}
               </select>
-              <button class="danger" @click=${() => this.removeScreen(s)}>Remover</button>
+              <button class="danger" @click=${() => this.removeScreen(s)}>${tr("Remover")}</button>
             </div>`)}</div>`
-          : html`<p class="muted">Ainda não há ecrãs emparelhados.</p>`}
+          : html`<p class="muted">${tr("Ainda não há ecrãs emparelhados.")}</p>`}
       </section>
       <section class="card">
-        <h3>Painéis</h3>
-        <p class="muted">Cada painel tem o seu estilo e a sua disposição. Cada ecrã mostra um painel.</p>
+        <h3>${tr("Painéis")}</h3>
+        <p class="muted">${tr("Cada painel tem o seu estilo e a sua disposição. Cada ecrã mostra um painel.")}</p>
         <div class="list">${this.dashboards.map((d) => html`<div class="row">
           <i class="thumb" style=${`background:${STYLE_SWATCH[d.style]}`}></i>
-          <span class="grow"><input class="txt inline" .value=${d.name} aria-label="Nome do painel" @change=${(e: Event) => this.renameDashboard(d, (e.target as HTMLInputElement).value.trim())} />
-            <small>${STYLE_NAMES[d.style]} · ${this.screens.filter((s) => s.dashboard === d.id).length} ecrã(s)</small></span>
-          ${d.id === this.dash.id ? html`<span class="badge">a ver</span>` : html`<button @click=${() => this.emit("dashboard-select", d.id)}>Ver e editar</button>`}
-          ${this.dashboards.length > 1 ? html`<button class="danger" @click=${() => this.removeDashboard(d)}>Remover</button>` : nothing}
+          <span class="grow"><input class="txt inline" .value=${d.name} aria-label=${tr("Nome do painel")} @change=${(e: Event) => this.renameDashboard(d, (e.target as HTMLInputElement).value.trim())} />
+            <small>${STYLE_NAMES[d.style]} · ${trn(this.screens.filter((s) => s.dashboard === d.id).length, "{n} ecrã", "{n} ecrãs")}</small></span>
+          ${d.id === this.dash.id ? html`<span class="badge">${tr("a ver")}</span>` : html`<button @click=${() => this.emit("dashboard-select", d.id)}>${tr("Ver e editar")}</button>`}
+          ${this.dashboards.length > 1 ? html`<button class="danger" @click=${() => this.removeDashboard(d)}>${tr("Remover")}</button>` : nothing}
         </div>`)}</div>
-        <button class="add" @click=${() => this.addDashboard()}>${icon(mdiPlus)} Novo painel</button>
+        <button class="add" @click=${() => this.addDashboard()}>${icon(mdiPlus)} ${tr("Novo painel")}</button>
       </section>`;
   }
 
   private renderSystem() {
     const layouts = Object.keys(this.dash.layouts ?? {});
     return html`<section class="card">
-      <h2>Sistema</h2>
-      <div class="row"><span class="grow">Versão<small>Pine3 Home ${this.version}</small></span></div>
-      <div class="row"><span class="grow">Disposição de ${this.dash.name}<small>${layouts.length ? `arrumada à mão em ${layouts.length} vista(s)` : "automática"}</small></span>
-        ${layouts.length ? html`<button @click=${() => this.resetLayouts()}>Repor a automática</button>` : nothing}</div>
-      <div class="row"><span class="grow">Página dos ecrãs de parede<small>${location.origin}/pine3/ecra</small></span></div>
+      <h2>${tr("Sistema")}</h2>
+      <div class="row"><span class="grow">${tr("Versão")}<small>Pine3 Home ${this.version}</small></span></div>
+      <div class="row"><span class="grow">${tr("Disposição de {name}", { name: this.dash.name })}<small>${layouts.length ? trn(layouts.length, "arrumada à mão em {n} vista", "arrumada à mão em {n} vistas") : tr("automática")}</small></span>
+        ${layouts.length ? html`<button @click=${() => this.resetLayouts()}>${tr("Repor a automática")}</button>` : nothing}</div>
+      <div class="row"><span class="grow">${tr("Página dos ecrãs de parede")}<small>${location.origin}/pine3/ecra</small></span></div>
     </section>
     <section class="card">
-      <h3>PIN das definições nos ecrãs</h3>
-      <p class="muted">Nos ecrãs de parede, o ⚙ pede este PIN antes de abrir as definições. Depois de o escreverem, ficam com acesso durante 10 minutos. Cinco tentativas erradas seguidas bloqueiam o PIN durante 5 minutos.</p>
+      <h3>${tr("PIN das definições nos ecrãs")}</h3>
+      <p class="muted">${tr("Nos ecrãs de parede, o ⚙ pede este PIN antes de abrir as definições. Depois de o escreverem, ficam com acesso durante 10 minutos. Cinco tentativas erradas seguidas bloqueiam o PIN durante 5 minutos.")}</p>
       <div class="row">
-        <span class="grow">${this.pinSet ? "PIN definido" : "Sem PIN: os ecrãs não abrem as definições"}<small>${this.pinSet ? "Escreve outro para o mudar." : "De 4 a 8 algarismos."}</small></span>
-        <input class="code" type="password" inputmode="numeric" maxlength="8" placeholder="••••" aria-label="Novo PIN" .value=${this.newPin}
+        <span class="grow">${this.pinSet ? tr("PIN definido") : tr("Sem PIN: os ecrãs não abrem as definições")}<small>${this.pinSet ? tr("Escreve outro para o mudar.") : tr("De 4 a 8 algarismos.")}</small></span>
+        <input class="code" type="password" inputmode="numeric" maxlength="8" placeholder="••••" aria-label=${tr("Novo PIN")} .value=${this.newPin}
           @input=${(e: Event) => (this.newPin = (e.target as HTMLInputElement).value.replace(/\D/g, "").slice(0, 8))} />
-        <button class="pri" ?disabled=${this.newPin.length < 4} @click=${() => this.setPin(this.newPin)}>${this.pinSet ? "Mudar o PIN" : "Guardar o PIN"}</button>
-        ${this.pinSet ? html`<button class="danger" @click=${() => this.setPin(null)}>Remover</button>` : nothing}
+        <button class="pri" ?disabled=${this.newPin.length < 4} @click=${() => this.setPin(this.newPin)}>${this.pinSet ? tr("Mudar o PIN") : tr("Guardar o PIN")}</button>
+        ${this.pinSet ? html`<button class="danger" @click=${() => this.setPin(null)}>${tr("Remover")}</button>` : nothing}
       </div>
     </section>`;
   }
@@ -380,18 +391,18 @@ export class Pine3Settings extends LitElement {
       void this.saveHouse({ room_order: order });
     };
     return html`<section class="card">
-      <h2>Divisões</h2>
-      <p class="muted">A ordem, o ícone e as divisões que aparecem. Vale para a dock, a Casa e todos os estilos e painéis. As divisões vêm das áreas do Home Assistant.</p>
+      <h2>${tr("Divisões")}</h2>
+      <p class="muted">${tr("A ordem, o ícone e as divisões que aparecem. Vale para a dock, a Casa e todos os estilos e painéis. As divisões vêm das áreas do Home Assistant.")}</p>
       <div class="list">${rooms.map((r, i) => {
         const shown = !hidden.includes(r.id);
         return html`<div class=${classMap({ row: true, off: !shown })}>
           <span class="mv">
-            <button class="ib" aria-label=${`Subir ${r.name}`} ?disabled=${i === 0} @click=${() => move(i, -1)}>${icon(mdiChevronUp)}</button>
-            <button class="ib" aria-label=${`Descer ${r.name}`} ?disabled=${i === rooms.length - 1} @click=${() => move(i, 1)}>${icon(mdiChevronDown)}</button>
+            <button class="ib" aria-label=${tr("Subir {name}", { name: r.name })} ?disabled=${i === 0} @click=${() => move(i, -1)}>${icon(mdiChevronUp)}</button>
+            <button class="ib" aria-label=${tr("Descer {name}", { name: r.name })} ?disabled=${i === rooms.length - 1} @click=${() => move(i, 1)}>${icon(mdiChevronDown)}</button>
           </span>
-          <button class="ricon" aria-label=${`Ícone de ${r.name}`} aria-expanded=${this.iconFor === r.id} @click=${() => (this.iconFor = this.iconFor === r.id ? null : r.id)}>${icon(roomIconPath(r.icon))}</button>
-          <span class="grow">${r.name}<small>${r.devices.filter((d) => !d.hidden).length} de ${r.devices.length} dispositivos${r.floor ? ` · ${r.floor}` : ""}</small></span>
-          <button class="sw" role="switch" aria-checked=${shown} aria-label=${`Mostrar ${r.name}`}
+          <button class="ricon" aria-label=${tr("Ícone de {name}", { name: r.name })} aria-expanded=${this.iconFor === r.id} @click=${() => (this.iconFor = this.iconFor === r.id ? null : r.id)}>${icon(roomIconPath(r.icon))}</button>
+          <span class="grow">${r.name}<small>${tr("{n} de {total} dispositivos", { n: r.devices.filter((d) => !d.hidden).length, total: r.devices.length })}${r.floor ? ` · ${r.floor}` : ""}</small></span>
+          <button class="sw" role="switch" aria-checked=${shown} aria-label=${tr("Mostrar {name}", { name: r.name })}
             @click=${() => void this.saveHouse({ hidden_rooms: shown ? [...hidden, r.id] : hidden.filter((x) => x !== r.id) })}></button>
           ${this.iconFor === r.id
             ? html`<div class="icons">${ROOM_ICON_CHOICES.map((ic) => html`<button class=${classMap({ ib: true, on: ic === r.icon })} aria-label=${ic.replace("mdi:", "")}
@@ -421,12 +432,12 @@ export class Pine3Settings extends LitElement {
       .map((r) => ({ r, ents: (r.entities ?? []).filter(match).sort((a, b) => Number(b.primary) - Number(a.primary)) }))
       .filter((x) => x.ents.length);
     return html`<section class="card">
-        <h2>Entidades</h2>
-        <p class="muted">O que aparece nos painéis. Cada dispositivo tem um cartão com a sua entidade <b>principal</b>; as <b>secundárias</b> (o consumo de uma tomada, o interruptor de uma TV, um sensor de diagnóstico) podem ter um cartão próprio.</p>
-        <label class="search">${icon(mdiMagnify)}<input type="search" placeholder="Procurar por nome ou entidade" aria-label="Procurar entidade"
+        <h2>${tr("Entidades")}</h2>
+        <p class="muted">${tr("O que aparece nos painéis. Cada dispositivo tem um cartão com a sua entidade principal; as secundárias (o consumo de uma tomada, o interruptor de uma TV, um sensor de diagnóstico) podem ter um cartão próprio.")}</p>
+        <label class="search">${icon(mdiMagnify)}<input type="search" placeholder=${tr("Procurar por nome ou entidade")} aria-label=${tr("Procurar entidade")}
           .value=${this.query} @input=${(e: Event) => (this.query = (e.target as HTMLInputElement).value)} /></label>
-        <div class="row"><span>Mostrar entidades de diagnóstico e configuração</span>
-          <button class="sw" role="switch" aria-checked=${this.diagnostics} aria-label="Mostrar entidades de diagnóstico" @click=${() => (this.diagnostics = !this.diagnostics)}></button></div>
+        <div class="row"><span>${tr("Mostrar entidades de diagnóstico e configuração")}</span>
+          <button class="sw" role="switch" aria-checked=${this.diagnostics} aria-label=${tr("Mostrar entidades de diagnóstico")} @click=${() => (this.diagnostics = !this.diagnostics)}></button></div>
       </section>
       ${rooms.length
         ? rooms.map(({ r, ents }) => this.entityRoom(r, ents))
@@ -437,14 +448,14 @@ export class Pine3Settings extends LitElement {
     const all = (r.entities ?? []).filter((e) => this.diagnostics || !e.category);
     const on = all.filter((e) => this.visible(e)).length;
     return html`<section class="card">
-      <h3 class="rh">${icon(roomIconPath(r.icon))} ${r.name} <small>${on} de ${all.length} visíveis</small></h3>
+      <h3 class="rh">${icon(roomIconPath(r.icon))} ${r.name} <small>${tr("{n} de {total} visíveis", { n: on, total: all.length })}</small></h3>
       <div class="list">${ents.map((e) => {
         const v = this.visible(e);
         return html`<div class=${classMap({ row: true, off: !v })}>
           <span class="grow">${this.hs.names?.[e.id] ?? e.name}<small class="mono">${e.id}</small></span>
           ${this.typePicker(r, e)}
-          <span class=${classMap({ badge: true, sec: !e.primary })}>${e.primary ? "Principal" : e.category ? "Diagnóstico" : "Secundária"}</span>
-          <button class="sw" role="switch" aria-checked=${v} aria-label=${`Mostrar ${e.name}`} @click=${() => this.toggleEntity(e)}></button>
+          <span class=${classMap({ badge: true, sec: !e.primary })}>${tr(e.primary ? "Principal" : e.category ? "Diagnóstico" : "Secundária")}</span>
+          <button class="sw" role="switch" aria-checked=${v} aria-label=${tr("Mostrar {name}", { name: e.name })} @click=${() => this.toggleEntity(e)}></button>
         </div>`;
       })}</div>
     </section>`;
@@ -457,19 +468,19 @@ export class Pine3Settings extends LitElement {
     const d = r.devices.find((x) => x.id === e.id);
     const guessed = autoType(e.id, this.entities[e.id], { name: d?.name ?? e.name, model: d?.model as string | null, manufacturer: d?.manufacturer as string | null });
     const cur = (this.hs.types?.[e.id] as DeviceType | undefined) ?? guessed;
-    return html`<select class="sel tsel" aria-label=${`Tipo de ${e.name}`} @change=${(ev: Event) => {
+    return html`<select class="sel tsel" aria-label=${tr("Tipo de {name}", { name: e.name })} @change=${(ev: Event) => {
       const t = (ev.target as HTMLSelectElement).value as DeviceType;
       const next = { ...(this.hs.types ?? {}) };
       if (t === guessed) delete next[e.id];
       else next[e.id] = t;
       void this.saveHouse({ types: next });
-    }}>${types.map((t) => html`<option value=${t} ?selected=${t === cur}>${DEVICE_TYPES[t].name}${t === guessed ? " (automático)" : ""}</option>`)}</select>`;
+    }}>${types.map((t) => html`<option value=${t} ?selected=${t === cur}>${DEVICE_TYPES[t].name}${t === guessed ? ` (${tr("automático")})` : ""}</option>`)}</select>`;
   }
 
   /** The views the preview can show: Casa, the rooms and the special views. */
   private previewViews(): Array<[string, string]> {
     const rooms = this.home.rooms.filter((r) => !r.hidden && r.devices.some((x) => !x.hidden)).map((r): [string, string] => [r.id, r.name]);
-    return [["home", "Casa"], ...rooms, ["@clima", "Clima"], ["@seguranca", "Segurança"], ["@cenas", "Cenas"]];
+    return [["home", tr("Casa")], ...rooms, ["@luzes", tr("Luzes")], ["@clima", tr("Clima")], ["@seguranca", tr("Segurança")], ["@cenas", tr("Cenas")]];
   }
 
   /** A style drawn with this house: a small, inert copy of the dashboard in that style. */
@@ -500,7 +511,7 @@ export class Pine3Settings extends LitElement {
       this.dashboards = dashboards;
       this.original = {};
       this.emit("dashboards", dashboards);
-    }, "Alterações desfeitas.");
+    }, tr("Alterações desfeitas."));
   }
 
   private setPin(pin: string | null): Promise<void> {
@@ -508,19 +519,19 @@ export class Pine3Settings extends LitElement {
       const r = await this.ws<{ set: boolean }>({ type: "pine3_home/pin/set", pin });
       this.pinSet = r.set;
       this.newPin = "";
-    }, pin ? "PIN guardado." : "PIN removido: os ecrãs deixam de abrir as definições.");
+    }, pin ? tr("PIN guardado.") : tr("PIN removido: os ecrãs deixam de abrir as definições."));
   }
 
   // ---------- actions ----------
   private approve(): Promise<void> {
-    const name = this.screenName.trim() || "Ecrã";
+    const name = this.screenName.trim() || tr("Ecrã");
     return this.run(async () => {
       await this.ws({ type: "pine3_home/screens/approve", code: this.code, name, dashboard: this.dash.id });
       this.code = "";
       this.screenName = "";
       if (location.search.includes("code=")) history.replaceState(null, "", location.pathname);
       await this.loadScreens();
-    }, `${name} emparelhado. O ecrã liga-se dentro de segundos.`);
+    }, tr("{name} emparelhado. O ecrã liga-se dentro de segundos.", { name }));
   }
 
   private updateScreen(s: Screen, changes: { name?: string; dashboard?: string }): Promise<void> {
@@ -531,11 +542,11 @@ export class Pine3Settings extends LitElement {
   }
 
   private removeScreen(s: Screen): Promise<void> | void {
-    if (!confirm(`Remover ${s.name}? O ecrã volta a pedir um código.`)) return;
+    if (!confirm(tr("Remover {name}? O ecrã volta a pedir um código.", { name: s.name }))) return;
     return this.run(async () => {
       await this.ws({ type: "pine3_home/screens/remove", screen_id: s.id });
       await this.loadScreens();
-    }, `${s.name} removido.`);
+    }, tr("{name} removido.", { name: s.name }));
   }
 
   private renameDashboard(d: Dashboard, name: string): Promise<void> | void {
@@ -550,29 +561,29 @@ export class Pine3Settings extends LitElement {
   private addDashboard(): Promise<void> {
     let n = this.dashboards.length + 1;
     while (this.dashboards.some((d) => d.id === `painel-${n}`)) n++;
-    const dash = { id: `painel-${n}`, name: `Painel ${n}`, style: "vidro" as Style };
+    const dash = { id: `painel-${n}`, name: tr("Painel {n}", { n }), style: "vidro" as Style };
     return this.run(async () => {
       const r = await this.ws<{ dashboards: Dashboard[] }>({ type: "pine3_home/dashboards/save", dashboard: dash });
       this.dashboards = r.dashboards;
       this.emit("dashboards", r.dashboards);
       this.emit("dashboard-select", dash.id);
       this.section = "aparencia";
-    }, `${dash.name} criado: escolhe o estilo.`);
+    }, tr("{name} criado: escolhe o estilo.", { name: dash.name }));
   }
 
   private removeDashboard(d: Dashboard): Promise<void> | void {
-    if (!confirm(`Remover o painel ${d.name}? Os ecrãs que o mostram passam para o primeiro painel.`)) return;
+    if (!confirm(tr("Remover o painel {name}? Os ecrãs que o mostram passam para o primeiro painel.", { name: d.name }))) return;
     return this.run(async () => {
       const r = await this.ws<{ dashboards: Dashboard[] }>({ type: "pine3_home/dashboards/remove", dashboard_id: d.id });
       this.dashboards = r.dashboards;
       this.emit("dashboards", r.dashboards);
       if (d.id === this.dash.id) this.emit("dashboard-select", r.dashboards[0].id);
       await this.loadScreens();
-    }, `${d.name} removido.`);
+    }, tr("{name} removido.", { name: d.name }));
   }
 
   private resetLayouts(): Promise<void> | void {
-    if (!confirm(`Repor a disposição automática de todas as vistas de ${this.dash.name}?`)) return;
+    if (!confirm(tr("Repor a disposição automática de todas as vistas de {name}?", { name: this.dash.name }))) return;
     return this.run(async () => {
       for (const view of Object.keys(this.dash.layouts ?? {})) {
         await this.ws({ type: "pine3_home/dashboards/layout", dashboard_id: this.dash.id, view, layout: null });
@@ -580,7 +591,7 @@ export class Pine3Settings extends LitElement {
       const r = await this.ws<{ dashboards: Dashboard[] }>({ type: "pine3_home/dashboards" });
       this.dashboards = r.dashboards;
       this.emit("dashboards", r.dashboards);
-    }, "Disposição reposta.");
+    }, tr("Disposição reposta."));
   }
 
   static styles = css`
