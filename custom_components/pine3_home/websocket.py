@@ -23,7 +23,7 @@ STYLES = ["vidro", "bento", "moldura", "editorial", "instrumento", "orbita", "ca
 DOCK_PLACEMENTS = ["left", "bottom"]
 DEFAULT_DASHBOARD = {"id": "casa", "name": "Casa", "style": "vidro", "dock": "left", "theme": "grafite"}
 DEFAULT_DATA: dict[str, Any] = {
-    "home": {"hidden": [], "hidden_rooms": [], "room_order": [], "shown": [], "room_icons": {}, "ipma_area": None},
+    "home": {"hidden": [], "hidden_rooms": [], "room_order": [], "shown": [], "room_icons": {}, "types": {}, "names": {}, "ipma_area": None},
     "dashboards": [DEFAULT_DASHBOARD],
     "screens": [],
     "screen_user_id": None,
@@ -31,6 +31,12 @@ DEFAULT_DATA: dict[str, Any] = {
 }
 REGISTRY_EVENTS = ("area_registry_updated", "device_registry_updated", "entity_registry_updated", "floor_registry_updated")
 SLUG = vol.Match(r"^[a-z0-9_-]{1,32}$")
+# The device types a card can be drawn as (the same as Pine3 View's floor plan), chosen in a card's sheet.
+DEVICE_TYPES = [
+    "ceiling", "lamp", "led", "spot", "bulb", "tv", "appletv", "homepod", "speaker", "ac", "fan", "purifier",
+    "blind", "door", "window", "plug", "sensor", "motion", "camera", "lock", "vacuum", "other",
+]
+ENTITY_ID = vol.Match(r"^[a-z_]+\.[a-z0-9_]+$")
 SIZES = ["s", "m", "l", "xl"]
 VIEW_ID = vol.All(str, vol.Length(min=1, max=80))
 LAYOUT = vol.Schema({
@@ -135,6 +141,8 @@ def ws_subscribe(hass: HomeAssistant, connection: websocket_api.ActiveConnection
     vol.Optional("room_order"): [str],
     vol.Optional("shown"): [str],
     vol.Optional("room_icons"): {str: vol.Match(r"^mdi:[a-z0-9-]{1,60}$")},
+    vol.Optional("types"): {ENTITY_ID: vol.In(DEVICE_TYPES)},
+    vol.Optional("names"): {ENTITY_ID: vol.All(str, vol.Length(min=1, max=40))},
 })
 @websocket_api.require_admin
 @websocket_api.async_response
@@ -142,7 +150,7 @@ async def ws_home_settings(hass: HomeAssistant, connection: websocket_api.Active
     """Settings of the house shared by every dashboard: the IPMA warning area, the devices hidden and the extra
     entities shown as tiles (Entidades), and the rooms' order, icons and the hidden ones (Divisões)."""
     home = _data(hass)["home"]
-    for key in ("ipma_area", "hidden", "hidden_rooms", "room_order", "shown", "room_icons"):
+    for key in ("ipma_area", "hidden", "hidden_rooms", "room_order", "shown", "room_icons", "types", "names"):
         if key in msg:
             home[key] = msg[key]
     await hass.data[DOMAIN]["save"]()

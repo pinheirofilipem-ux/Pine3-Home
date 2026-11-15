@@ -77,6 +77,10 @@ export interface HomeSettings {
   hidden_rooms?: string[];
   room_order?: string[];
   room_icons?: Record<string, string>;
+  /** A card's type, chosen by the person (otherwise guessed): entity id -> type. */
+  types?: Record<string, string>;
+  /** A card's name, chosen by the person: entity id -> name. */
+  names?: Record<string, string>;
 }
 
 export interface Home {

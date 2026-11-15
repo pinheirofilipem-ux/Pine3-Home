@@ -4,9 +4,10 @@ import { customElement, property, state } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { styleMap } from "lit/directives/style-map.js";
 import { callService, type Connection, type HassEntities, type HassEntity } from "home-assistant-js-websocket";
-import type { Dashboard, Home, Layout, Room } from "../lib/types";
+import type { Dashboard, Home, HomeSettings, Layout, Room } from "../lib/types";
 import { ICONS, roomIcon } from "./icons";
-import { album, blind, fanArt, lamp, lockArt, plugArt, robot, sceneArt, spark, thermo, weatherArt } from "./art";
+import { album, blind, fanArt, lightArt, lockArt, plugArt, robot, sceneArt, spark, thermo, weatherArt } from "./art";
+import { DEVICE_TYPES, TYPES_FOR, autoType, type DeviceType } from "../lib/devtypes";
 import {
   CATEGORIES, addable, arrange, sizesFor, avgBrightness, brightness, climateWidgets, domainOf, fmt, homeWidgets, sceneWidgets, securityWidgets, isOn, lightColor, roomLights, roomWidgets, summary, unavailable,
   type Widget,
@@ -656,7 +657,7 @@ export class Pine3Vidro extends LitElement {
         @pointerup=${(e: PointerEvent) => this.up(e, w)} @pointercancel=${() => this.cancel()} @contextmenu=${(e: Event) => e.preventDefault()}>
       ${body.fill != null ? html`<div class="fill" style=${styleMap({ width: `${body.fill}%`, "--fc": body.color ?? "255,207,138" })}></div>` : nothing}
       ${body.art ?? nothing}
-      <span class="nm">${w.name}${body.tag ? html`<em>${body.tag}</em>` : nothing}</span>
+      <span class="nm">${(w.entity && this.home.settings?.names?.[w.entity]) || w.name}${body.tag ? html`<em>${body.tag}</em>` : nothing}</span>
       ${body.extra ?? nothing}
       <div class="hero" style=${body.heroStyle ?? ""}>${body.hero}${body.small ? html`<small>${body.small}</small>` : nothing}</div>
       ${editing ? nothing : body.ctl ?? nothing}
@@ -679,12 +680,12 @@ export class Pine3Vidro extends LitElement {
         return {
           hero: lvl ? `${lvl}%` : "Off", small: on.length ? on.map((id) => this.name(id, w.room)).slice(0, 2).join(" e ") : `${w.entities!.length} luz${w.entities!.length > 1 ? "es" : ""}`,
           tag: w.entities!.length > 1 ? `${on.length}/${w.entities!.length} luzes` : undefined,
-          art: lamp(lvl ?? 0, c), fill: lvl ? lvl : null, color: rgbOf(c), on: lvl! > 0,
+          art: lightArt(this.typeOf(on[0] ?? w.entities![0]), lvl ?? 0, c), fill: lvl ? lvl : null, color: rgbOf(c), on: lvl! > 0,
         };
       }
       case "light": {
         const c = lightColor(s);
-        return { hero: lvl ? `${lvl}%` : "Off", tag: w.sub && this.view === "home" ? w.sub : undefined, art: lamp(lvl ?? 0, c), fill: lvl ? lvl : null, color: rgbOf(c), on: (lvl ?? 0) > 0, heroStyle: lvl ? `color:${c}` : "" };
+        return { hero: lvl ? `${lvl}%` : "Off", tag: w.sub && this.view === "home" ? w.sub : undefined, art: lightArt(this.typeOf(w.entity!), lvl ?? 0, c), fill: lvl ? lvl : null, color: rgbOf(c), on: (lvl ?? 0) > 0, heroStyle: lvl ? `color:${c}` : "" };
       }
       case "cover": {
         const p = lvl ?? 0;
@@ -797,6 +798,8 @@ export class Pine3Vidro extends LitElement {
   }
 
   protected name(id: string, room?: Room): string {
+    const chosen = this.home.settings?.names?.[id];
+    if (chosen) return chosen;
     for (const r of this.home.rooms) {
       const d = r.devices.find((x) => x.id === id);
       if (d) return d.name;
@@ -827,7 +830,71 @@ export class Pine3Vidro extends LitElement {
           <button class="x" aria-label="Fechar" @click=${() => (this.sheet = null)}>${icon(ICONS.close)}</button></div>
         <h4>${this.name(id, room)}</h4>
         ${this.sheetBody(id, s)}
+        ${this.thisCard(id)}
       </aside>`;
+  }
+
+  // ---------- a card's type and name (Definições → Entidades, or "Este cartão" in its sheet) ----------
+  /** The device an entity's card belongs to, for the type guess (name, model, maker). */
+  private deviceOf(id: string) {
+    for (const r of this.home.rooms) {
+      const d = r.devices.find((x) => x.id === id);
+      if (d) return d;
+    }
+    return undefined;
+  }
+
+  /** A card's type: chosen by the person, or guessed like Pine3 View does. */
+  protected typeOf(id: string): DeviceType {
+    const chosen = this.home.settings?.types?.[id] as DeviceType | undefined;
+    if (chosen && DEVICE_TYPES[chosen]) return chosen;
+    const d = this.deviceOf(id);
+    return autoType(id, this.entities[id], { name: d?.name, model: d?.model as string | null, manufacturer: d?.manufacturer as string | null });
+  }
+
+  /** Save some of the house's settings from a card: shown at once, then saved for every screen. */
+  protected saveHouse(changes: HomeSettings): void {
+    this.home = { ...this.home, settings: { ...(this.home.settings ?? {}), ...changes } };
+    void this.conn.sendMessagePromise({ type: "pine3_home/home/settings", ...changes }).catch((err) => console.warn("Pine3 Home: settings", err));
+  }
+
+  /** "Este cartão": the type, the name and hiding it. Only where the settings can be changed (the HA panel). */
+  private thisCard(id: string) {
+    if (!this.settingsButton || !this.deviceOf(id) && !this.home.rooms.some((r) => r.entities?.some((e) => e.id === id))) return nothing;
+    const st = this.home.settings ?? {};
+    const types = TYPES_FOR[domainOf(id)] ?? [];
+    const cur = this.typeOf(id);
+    const d = this.deviceOf(id);
+    const guessed = autoType(id, this.entities[id], { name: d?.name, model: d?.model as string | null, manufacturer: d?.manufacturer as string | null });
+    const chosen = !!st.types?.[id];
+    const setType = (t: DeviceType | null) => {
+      const next = { ...(st.types ?? {}) };
+      if (t && t !== guessed) next[id] = t;
+      else delete next[id];
+      this.saveHouse({ types: next });
+    };
+    const setName = (v: string) => {
+      const next = { ...(st.names ?? {}) };
+      const auto = this.deviceOf(id)?.name;
+      if (v && v !== auto) next[id] = v.slice(0, 40);
+      else delete next[id];
+      this.saveHouse({ names: next });
+    };
+    const hidden = (st.hidden ?? []).includes(id);
+    return html`<div class="this">
+      <span class="k">Este cartão · vale para todos os estilos e painéis</span>
+      ${types.length > 1
+        ? html`<div class="tchips" role="group" aria-label="Tipo">${types.map((t) => html`<button class=${classMap({ on: t === cur })} aria-pressed=${t === cur}
+            @click=${() => setType(t)}>${icon(DEVICE_TYPES[t].icon)}${DEVICE_TYPES[t].name}</button>`)}</div>
+          <span class="auto">${chosen
+            ? html`Escolhido por ti. <button class="lnk" @click=${() => setType(null)}>Voltar ao automático (${DEVICE_TYPES[guessed].name.toLowerCase()})</button>`
+            : `Adivinhado pelo nome e pelo modelo: ${DEVICE_TYPES[guessed].name.toLowerCase()}.`}</span>`
+        : nothing}
+      <label class="fld"><span>Nome</span><input .value=${this.name(id)} maxlength="40" @change=${(e: Event) => setName((e.target as HTMLInputElement).value.trim())} /></label>
+      <div class="fld"><span>Esconder este cartão</span>
+        <button class="sw" role="switch" aria-checked=${hidden} aria-label="Esconder este cartão"
+          @click=${() => { this.saveHouse({ hidden: hidden ? (st.hidden ?? []).filter((x) => x !== id) : [...(st.hidden ?? []), id] }); if (!hidden) this.sheet = null; }}></button></div>
+    </div>`;
   }
 
   protected bigSlider(key: string, value: number, color: string, label: string, set: (v: number) => void) {
