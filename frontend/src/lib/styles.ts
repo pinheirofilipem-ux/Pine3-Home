@@ -4,6 +4,8 @@ import "../vidro/bento";
 import "../vidro/moldura";
 import "../vidro/editorial";
 import "../vidro/instrumento";
+import "../vidro/orbita";
+import "../vidro/carteira";
 import { unsafeStatic } from "lit/static-html.js";
 
 export const STYLE_TAGS: Record<string, string> = {
@@ -12,6 +14,8 @@ export const STYLE_TAGS: Record<string, string> = {
   moldura: "pine3-moldura",
   editorial: "pine3-editorial",
   instrumento: "pine3-instrumento",
+  orbita: "pine3-orbita",
+  carteira: "pine3-carteira",
 };
 
 /** The element for a style; the styles still to come show Vidro. */
