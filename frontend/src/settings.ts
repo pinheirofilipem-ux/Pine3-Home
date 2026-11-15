@@ -8,8 +8,9 @@ import { html as shtml } from "lit/static-html.js";
 import type { Connection, HassEntities } from "home-assistant-js-websocket";
 import {
   mdiPaletteOutline, mdiHomeOutline, mdiTabletDashboard, mdiCogOutline, mdiClose, mdiPlus, mdiWeatherNight,
-  mdiViewGridOutline, mdiFormatListChecks, mdiChevronUp, mdiChevronDown, mdiMagnify,
+  mdiViewGridOutline, mdiFormatListChecks, mdiChevronUp, mdiChevronDown, mdiMagnify, mdiFloorPlan,
 } from "@mdi/js";
+import { autoHouseMode, houseModeSetting, setHouseMode, type HouseMode } from "./house/house";
 import { ROOM_ICON_CHOICES, roomIconPath } from "./vidro/icons";
 import { DEVICE_TYPES, TYPES_FOR, autoType, type DeviceType } from "./lib/devtypes";
 import { styleTag, STYLE_SWATCH } from "./lib/styles";
@@ -19,10 +20,11 @@ import {
   type Dashboard, type Home, type HomeSettings, type PendingCode, type Room, type RoomEntity, type Screen, type Style,
 } from "./lib/types";
 
-type Section = "aparencia" | "divisoes" | "entidades" | "ambiente" | "casa" | "ecras" | "sistema";
+type Section = "aparencia" | "divisoes" | "planta" | "entidades" | "ambiente" | "casa" | "ecras" | "sistema";
 const SECTIONS: Array<{ id: Section; name: string; icon: string }> = trNames([
   { id: "aparencia", name: "Aparência", icon: mdiPaletteOutline },
   { id: "divisoes", name: "Divisões", icon: mdiViewGridOutline },
+  { id: "planta", name: "Planta", icon: mdiFloorPlan },
   { id: "entidades", name: "Entidades", icon: mdiFormatListChecks },
   { id: "ambiente", name: "Face ambiente", icon: mdiWeatherNight },
   { id: "casa", name: "Casa", icon: mdiHomeOutline },
@@ -48,7 +50,7 @@ export class Pine3Settings extends LitElement {
   @property() dashboardId = "";
   @property() version = "";
   /** Opens on a section, e.g. Ecrãs with a code from the screen's QR. */
-  @property() start: Section = "aparencia";
+  @property() start: string = "aparencia";
   @property() code = "";
 
   @state() private section: Section = "aparencia";
@@ -74,7 +76,7 @@ export class Pine3Settings extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
-    this.section = this.start;
+    this.section = (SECTIONS.some((s) => s.id === this.start) ? this.start : "aparencia") as Section;
     void this.loadScreens();
     void this.ws<{ set: boolean }>({ type: "pine3_home/pin/status" }).then((r) => (this.pinSet = r.set)).catch(() => undefined);
     this.timer = window.setInterval(() => this.loadPending(), 4000);
@@ -109,7 +111,7 @@ export class Pine3Settings extends LitElement {
         this.thumbResize.observe(one);
       }
     }
-    if (changed.has("start")) this.section = this.start;
+    if (changed.has("start")) this.section = (SECTIONS.some((s) => s.id === this.start) ? this.start : "aparencia") as Section;
   }
 
   private get dash(): Dashboard {
@@ -194,6 +196,7 @@ export class Pine3Settings extends LitElement {
         ${this.message ? html`<p class=${classMap({ msg: true, bad: !this.message.ok })} role="status">${this.message.text}</p>` : nothing}
         ${this.section === "aparencia" ? this.renderAppearance() : nothing}
         ${this.section === "divisoes" ? this.renderRooms() : nothing}
+        ${this.section === "planta" ? this.renderPlan() : nothing}
         ${this.section === "entidades" ? this.renderEntities() : nothing}
         ${this.section === "ambiente" ? this.renderAmbient() : nothing}
         ${this.section === "casa" ? this.renderHouse() : nothing}
@@ -255,6 +258,24 @@ export class Pine3Settings extends LitElement {
           <button class="sw" role="switch" aria-checked=${d.screen_edit !== false} aria-label=${tr("Editar a grelha nos ecrãs")}
             @click=${() => this.save({ screen_edit: d.screen_edit === false })}></button>
         </div>
+      </section>`;
+  }
+
+  /** Planta: Pine3 View's floor-plan editor, and how this screen draws the Casa 3D. */
+  private renderPlan() {
+    const mode = houseModeSetting();
+    const names: Record<HouseMode, string> = {
+      auto: tr("Automático"), full: tr("3D completo"), lite: tr("3D leve"), image: tr("Imagem"), plan: tr("Planta 2D"),
+    };
+    return html`<section class="card">
+        <pine3-house mode="plan" canEdit .home=${this.home} .entities=${this.entities} .conn=${this.conn}
+          .save=${(c: HomeSettings) => void this.saveHouse(c)}></pine3-house>
+      </section>
+      <section class="card">
+        <h3>${tr("A Casa 3D neste ecrã")}</h3>
+        <p class="muted">${tr("Fica guardado só neste aparelho. Num tablet modesto, a imagem e a planta 2D são as mais leves.")}</p>
+        <div class="seg">${(Object.keys(names) as HouseMode[]).map((k) => html`<button class=${classMap({ on: k === mode })}
+          @click=${() => { setHouseMode(k); this.requestUpdate(); }}>${k === "auto" ? `${names.auto} (${names[autoHouseMode()]})` : names[k]}</button>`)}</div>
       </section>`;
   }
 

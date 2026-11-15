@@ -38,7 +38,7 @@ export class Pine3HomePanel extends LitElement {
   @state() private dashboards: Dashboard[] = [];
   @state() private dashId: string | null = remembered();
   @state() private settings = false;
-  @state() private startSection: "aparencia" | "ecras" = "aparencia";
+  @state() private startSection = "aparencia";
   @state() private code = "";
   @state() private error = "";
   private conn?: Connection;
@@ -66,9 +66,10 @@ export class Pine3HomePanel extends LitElement {
     this.conn = undefined;
   }
 
-  private onOpen = () => {
+  private onOpen = (e: Event) => {
     if (!this.admin) return;
-    this.startSection = "aparencia";
+    // a section to open at (the Casa 3D's "Editar planta" opens Planta)
+    this.startSection = (e as CustomEvent<{ section?: string } | null>).detail?.section ?? "aparencia";
     this.settings = true;
   };
   private onClose = () => (this.settings = false);

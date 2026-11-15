@@ -45,6 +45,8 @@ export class Pine3Screen extends LitElement {
   @state() private settings: "closed" | "pin" | "open" = "closed";
   @state() private pin = "";
   @state() private pinError = "";
+  /** The settings section the ⚙ (or "Editar planta") opens at. */
+  private settingsStart = "aparencia";
   @state() private pinBusy = false;
   @state() private dashboards: Dashboard[] = [];
   @state() private settingsDash = "";
@@ -70,7 +72,10 @@ export class Pine3Screen extends LitElement {
       }
       this.activity();
     });
-    this.addEventListener("pine3-settings", () => void this.askSettings());
+    this.addEventListener("pine3-settings", (e) => {
+      this.settingsStart = (e as CustomEvent<{ section?: string } | null>).detail?.section ?? "aparencia";
+      void this.askSettings();
+    });
     // the PIN can also be typed on a keyboard (a PC)
     window.addEventListener("keydown", this.onPinKey);
     this.addEventListener("pine3-settings-close", () => (this.settings = "closed"));
@@ -326,7 +331,7 @@ export class Pine3Screen extends LitElement {
       ${this.settings === "pin" ? this.renderPin() : nothing}
       ${this.settings === "open"
         ? html`<pine3-settings .conn=${this.conn} .home=${this.home} .entities=${this.entities} .dashboards=${this.dashboards}
-            .dashboardId=${this.settingsDash} .version=${me.version}></pine3-settings>`
+            .dashboardId=${this.settingsDash} .version=${me.version} .start=${this.settingsStart}></pine3-settings>`
         : nothing}`;
   }
 

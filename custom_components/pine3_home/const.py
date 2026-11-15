@@ -1,7 +1,7 @@
 """Constants for Pine3 Home."""
 
 DOMAIN = "pine3_home"
-VERSION = "0.18.0"
+VERSION = "0.19.0"
 
 PANEL_URL_PATH = "pine3-home"
 PANEL_TITLE = "Pine3 Home"

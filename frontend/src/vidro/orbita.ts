@@ -19,6 +19,7 @@ const VIEWS = trNames([
   { id: "@clima", name: "Clima", icon: ICONS.therm },
   { id: "@seguranca", name: "Segurança", icon: ICONS.shield },
   { id: "@cenas", name: "Cenas", icon: ICONS.spark },
+  { id: "@casa3d", name: "Casa 3D", icon: ICONS.cube },
 ]);
 
 @customElement("pine3-orbita")
@@ -26,7 +27,7 @@ export class Pine3Orbita extends Pine3Vidro {
   @state() private wheel = false;
 
   private get views() {
-    return VIEWS.filter((v) => v.id === "home" || v.id === "@divisoes" || this.viewWidgets(v.id).length);
+    return VIEWS.filter((v) => v.id === "home" || v.id === "@divisoes" || this.viewAvailable(v.id));
   }
 
   private go(id: string): void {

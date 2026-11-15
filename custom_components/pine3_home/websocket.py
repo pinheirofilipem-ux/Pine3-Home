@@ -24,7 +24,8 @@ STYLES = ["vidro", "bento", "moldura", "editorial", "instrumento", "orbita", "ca
 DOCK_PLACEMENTS = ["left", "bottom"]
 DEFAULT_DASHBOARD = {"id": "casa", "name": "Casa", "style": "vidro", "dock": "left", "theme": "grafite"}
 DEFAULT_DATA: dict[str, Any] = {
-    "home": {"hidden": [], "hidden_rooms": [], "room_order": [], "shown": [], "room_icons": {}, "types": {}, "names": {}, "ipma_area": None, "language": "auto"},
+    "home": {"hidden": [], "hidden_rooms": [], "room_order": [], "shown": [], "room_icons": {}, "types": {}, "names": {}, "ipma_area": None, "language": "auto",
+             "house_layout": {}, "house_size": {}, "placements": {}, "wall_height": 30},
     "pin": None,
     "dashboards": [DEFAULT_DASHBOARD],
     "screens": [],
@@ -146,6 +147,34 @@ def ws_subscribe(hass: HomeAssistant, connection: websocket_api.ActiveConnection
     vol.Optional("types"): {ENTITY_ID: vol.In(DEVICE_TYPES)},
     vol.Optional("names"): {ENTITY_ID: vol.All(str, vol.Length(min=1, max=40))},
     vol.Optional("language"): vol.In(["auto", "pt", "en"]),
+    # Casa 3D and its floor plan (the same shapes as Pine3 View's)
+    vol.Optional("house_size"): {str: vol.In([1, 2, 3])},
+    vol.Optional("house_layout"): {
+        str: {
+            vol.Required("f"): vol.All(int, vol.Range(min=-5, max=20)),
+            vol.Required("x"): vol.All(int, vol.Range(min=0, max=60)),
+            vol.Required("y"): vol.All(int, vol.Range(min=0, max=60)),
+            vol.Required("w"): vol.All(int, vol.Range(min=1, max=30)),
+            vol.Required("d"): vol.All(int, vol.Range(min=1, max=30)),
+            # free-shape rooms: the grid cells they cover
+            vol.Optional("cells"): vol.All(
+                [vol.All([vol.All(int, vol.Range(min=0, max=60))], vol.Length(min=2, max=2))],
+                vol.Length(min=1, max=1000),
+            ),
+        }
+    },
+    vol.Optional("wall_height"): vol.All(int, vol.Range(min=8, max=120)),
+    # entities placed on the plan: floor, position in grid units, type, and an LED strip's angle and length
+    vol.Optional("placements"): {
+        ENTITY_ID: {
+            vol.Required("f"): vol.All(int, vol.Range(min=-5, max=20)),
+            vol.Required("x"): vol.All(vol.Coerce(float), vol.Range(min=0, max=60)),
+            vol.Required("y"): vol.All(vol.Coerce(float), vol.Range(min=0, max=60)),
+            vol.Optional("t"): vol.In(DEVICE_TYPES),
+            vol.Optional("r"): vol.All(vol.Coerce(float), vol.Range(min=0, max=360)),
+            vol.Optional("l"): vol.All(vol.Coerce(float), vol.Range(min=0.25, max=30)),
+        }
+    },
 })
 @require_admin_or_pin
 @websocket_api.async_response
@@ -153,7 +182,8 @@ async def ws_home_settings(hass: HomeAssistant, connection: websocket_api.Active
     """Settings of the house shared by every dashboard: the IPMA warning area, the devices hidden and the extra
     entities shown as tiles (Entidades), the rooms' order, icons and the hidden ones (Divisões), and the language."""
     home = _data(hass)["home"]
-    for key in ("ipma_area", "hidden", "hidden_rooms", "room_order", "shown", "room_icons", "types", "names", "language"):
+    for key in ("ipma_area", "hidden", "hidden_rooms", "room_order", "shown", "room_icons", "types", "names", "language",
+                "house_layout", "house_size", "placements", "wall_height"):
         if key in msg:
             home[key] = msg[key]
     await hass.data[DOMAIN]["save"]()

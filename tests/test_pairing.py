@@ -170,6 +170,14 @@ async def test_home_settings(hass: HomeAssistant, pine3, hass_ws_client) -> None
     assert home["settings"]["language"] == "en" and home["language"] == hass.config.language
     await admin.send_json({"id": 6, "type": "pine3_home/home/settings", "language": "fr"})
     assert not (await result(admin, 6))["success"]
+    # Casa 3D: the floor plan, a placed LED strip and the wall height
+    plan = {"sala": {"f": 0, "x": 0, "y": 0, "w": 4, "d": 3}, "cozinha": {"f": 0, "x": 4, "y": 0, "w": 2, "d": 2, "cells": [[4, 0], [5, 0], [4, 1]]}}
+    await admin.send_json({"id": 7, "type": "pine3_home/home/settings", "house_layout": plan, "wall_height": 40,
+                           "placements": {"light.fita": {"f": 0, "x": 1.5, "y": 2, "t": "led", "r": 90, "l": 2.5}}})
+    res = (await result(admin, 7))["result"]["settings"]
+    assert res["house_layout"] == plan and res["wall_height"] == 40 and res["placements"]["light.fita"]["l"] == 2.5
+    await admin.send_json({"id": 8, "type": "pine3_home/home/settings", "house_layout": {"sala": {"f": 0, "x": 0, "y": 0, "w": 99, "d": 3}}})
+    assert not (await result(admin, 8))["success"]
 
 
 async def test_entities_and_rooms_settings(hass: HomeAssistant, pine3, hass_ws_client) -> None:

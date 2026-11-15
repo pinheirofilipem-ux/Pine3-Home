@@ -19,6 +19,7 @@ const TABS = trNames([
   { id: "@clima", name: "Clima", color: "#ff8f6b", icon: ICONS.therm },
   { id: "@seguranca", name: "Segurança", color: "#9cc4f2", icon: ICONS.shield },
   { id: "@cenas", name: "Cenas", color: "#f7a98a", icon: ICONS.spark },
+  { id: "@casa3d", name: "Casa 3D", color: "#c9bdf0", icon: ICONS.cube },
 ]);
 
 @customElement("pine3-carteira")
@@ -28,7 +29,7 @@ export class Pine3Carteira extends Pine3Vidro {
     if (this.ambient) return this.renderAmbient();
     const room = this.home.rooms.find((r) => r.id === this.view);
     const cur = room ? "@divisoes" : this.view;
-    const tabs = TABS.filter((t) => t.id === "home" || t.id === "@divisoes" || this.viewWidgets(t.id).length);
+    const tabs = TABS.filter((t) => t.id === "home" || t.id === "@divisoes" || this.viewAvailable(t.id));
     const color = (TABS.find((t) => t.id === cur) ?? TABS[0]).color;
     return html`<div class=${classMap({ vd: true, carteira: true, editing: !!this.editing })}>
       <nav class="stack" aria-label=${tr("Vistas")}>

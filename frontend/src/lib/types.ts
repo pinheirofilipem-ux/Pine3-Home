@@ -52,6 +52,8 @@ export interface Room {
   name: string;
   icon: string;
   floor: string | null;
+  /** The floor's level in Home Assistant (0 when the area has no floor). */
+  floor_level?: number;
   devices: Device[];
   temperature: string | null;
   humidity: string | null;
@@ -75,6 +77,11 @@ export interface HomeSettings {
   ipma_area?: string | null;
   /** "auto" follows Home Assistant's language. */
   language?: "auto" | "pt" | "en";
+  /** Casa 3D: rooms drawn on the floor plan, their automatic size, the entities placed on it and the wall height. */
+  house_layout?: Record<string, { f: number; x: number; y: number; w: number; d: number; cells?: Array<[number, number]> }>;
+  house_size?: Record<string, number>;
+  placements?: Record<string, { f: number; x: number; y: number; t?: string; r?: number; l?: number }>;
+  wall_height?: number;
   hidden?: string[];
   shown?: string[];
   hidden_rooms?: string[];

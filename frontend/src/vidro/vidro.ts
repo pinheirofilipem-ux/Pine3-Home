@@ -13,6 +13,7 @@ import {
   type Widget,
 } from "./model";
 import { vidroStyles } from "./styles";
+import "../house/house";
 import { locale, tr, trMap, trn, trNames } from "../lib/i18n";
 
 const LONG_PRESS = 550;
@@ -36,6 +37,7 @@ const VIEWS = trNames([
   { id: "@clima", name: "Clima", icon: ICONS.therm },
   { id: "@seguranca", name: "Segurança", icon: ICONS.shield },
   { id: "@cenas", name: "Cenas", icon: ICONS.spark },
+  { id: "@casa3d", name: "Casa 3D", icon: ICONS.cube },
 ] as const);
 
 interface IpmaWarning {
@@ -583,10 +585,11 @@ export class Pine3Vidro extends LitElement {
   protected renderHeader(title: TemplateResult | string, sub: string, controls: unknown = nothing) {
     const s = summary(this.home, this.entities);
     const chip = (view: string, bg: string, path: string, name: string, small: string) =>
-      this.viewWidgets(view).length
+      this.viewAvailable(view)
         ? html`<button class="chip" @click=${() => this.openRoom(view)}><i style=${bg}>${icon(path)}</i><span>${name}<small>${small}</small></span></button>`
         : nothing;
     const scenes = this.home.scenes.length + this.home.scripts.length;
+    const litRooms = this.home.rooms.filter((r) => !r.hidden && roomLights(r).some((id) => this.entities[id]?.state === "on")).length;
     return html`<header class="hdr">
       <div class="t"><span>${sub}</span><b>${title}</b></div>
       <div class="chips">
@@ -595,7 +598,8 @@ export class Pine3Vidro extends LitElement {
           : html`${chip("@clima", "background:#34c759;color:#06210f", ICONS.therm, tr("Clima"), s.temp ?? "")}
             ${chip("@luzes", "background:#ffcf8a;color:#2a1a04", ICONS.bulb, tr("Luzes"), s.lightsOn ? trn(s.lightsOn, "{n} acesa", "{n} acesas") : tr("apagadas"))}
             ${chip("@seguranca", s.alerts ? "background:#ff8a5c;color:#2a0f04" : "background:#5be3a0;color:#06210f", ICONS.shield, tr("Segurança"), s.alertText)}
-            ${chip("@cenas", "background:#c9b8ff;color:#1d1530", ICONS.spark, tr("Cenas"), trn(scenes, "{n} cena", "{n} cenas"))}`}
+            ${chip("@cenas", "background:#c9b8ff;color:#1d1530", ICONS.spark, tr("Cenas"), trn(scenes, "{n} cena", "{n} cenas"))}
+            ${chip("@casa3d", "background:#a9c7ff;color:#0b1a33", ICONS.cube, tr("Casa 3D"), trn(litRooms, "{n} divisão acesa", "{n} divisões acesas"))}`}
         ${controls}
       </div>
     </header>`;
@@ -625,7 +629,26 @@ export class Pine3Vidro extends LitElement {
     return [];
   }
 
+  /** Whether a view has something to show (Casa 3D: any room with devices). */
+  protected viewAvailable(id: string): boolean {
+    if (id === "@casa3d") return this.home.rooms.some((r) => !r.hidden && r.devices.some((d) => !d.hidden));
+    return this.viewWidgets(id).length > 0;
+  }
+
+  /** Casa 3D: Pine3 View's house (see house/house.ts). A tap on a room opens it, on a light toggles it. */
+  protected renderHouse() {
+    const lit = this.home.rooms.filter((r) => !r.hidden && roomLights(r).some((id) => this.entities[id]?.state === "on")).length;
+    return html`<div class="rtop">
+        <button class="back" @click=${() => this.openRoom("home")} aria-label=${tr("Voltar à casa")}>${icon(ICONS.back)}</button>
+        <b>${tr("Casa 3D")}</b><span>${trn(lit, "{n} divisão acesa", "{n} divisões acesas")}</span>
+      </div>
+      <pine3-house class="house3d" .home=${this.home} .entities=${this.entities} .conn=${this.conn} ?canEdit=${this.settingsButton}
+        .openRoom=${(rid: string) => this.openRoom(rid)} .openSheet=${(eid: string) => (this.sheet = eid)}
+        .save=${(c: HomeSettings) => this.saveHouse(c)}></pine3-house>`;
+  }
+
   protected renderView(id: string) {
+    if (id === "@casa3d") return this.renderHouse();
     const v = VIEWS.find((x) => x.id === id)!;
     const auto = this.viewWidgets(id);
     const widgets = this.arranged(id, auto);
@@ -636,7 +659,7 @@ export class Pine3Vidro extends LitElement {
     const lights = id === "@luzes" ? auto.flatMap((w) => w.entities ?? []) : [];
     return html`<div class="rtop">
         <button class="back" @click=${() => this.openRoom("home")} aria-label=${tr("Voltar à casa")}>${icon(ICONS.back)}</button>
-        <b>${v.name}</b><span>${editing ? "a editar" : facts}</span>
+        <b>${v.name}</b><span>${editing ? tr("a editar") : facts}</span>
         <div class="act">
           ${lights.length && !editing
             ? html`<button class="pill" @click=${() => this.call("light", "turn_on", lights)}>${icon(ICONS.bulb)} ${tr("Acender todas")}</button>

@@ -17,6 +17,7 @@ const PAGES = trNames([
   { id: "@clima", name: "Clima" },
   { id: "@seguranca", name: "Segurança" },
   { id: "@cenas", name: "Cenas" },
+  { id: "@casa3d", name: "Casa 3D" },
 ]);
 const WORDS = ["nenhuma", "uma", "duas", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez"];
 const WORDS_EN = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
@@ -28,7 +29,7 @@ export class Pine3Editorial extends Pine3Vidro {
   @state() private open: string | null = null;
 
   private get pages() {
-    return PAGES.filter((p) => p.id === "home" || p.id === "@divisoes" || this.viewWidgets(p.id).length);
+    return PAGES.filter((p) => p.id === "home" || p.id === "@divisoes" || this.viewAvailable(p.id));
   }
 
   render() {
