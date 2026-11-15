@@ -2,7 +2,7 @@
 import type { HassEntities, HassEntity } from "home-assistant-js-websocket";
 import type { Device, Home, Layout, Room } from "../lib/types";
 
-export type Kind = "room-lights" | "scene" | "camera" | "light" | "climate" | "weather" | "lock" | "cover" | "media" | "vacuum" | "scenes" | "fan" | "switch" | "outlet" | "sensor" | "binary";
+export type Kind = "room-lights" | "scene" | "camera" | "clock" | "light" | "climate" | "weather" | "lock" | "cover" | "media" | "vacuum" | "scenes" | "fan" | "switch" | "outlet" | "sensor" | "binary";
 export type Size = "s" | "m" | "l" | "xl"; // 1x1, 2x1, 2x2, 3x2 on a 6-column grid
 
 export interface Widget {
@@ -153,7 +153,7 @@ export function sceneWidgets(home: Home, e: HassEntities): Widget[] {
     .map((id) => ({ key: id, kind: "scene" as Kind, size: "s" as Size, name: (e[id].attributes.friendly_name as string) ?? id, entity: id }));
 }
 
-const BIG: Kind[] = ["climate", "weather", "media", "scenes", "camera"];
+const BIG: Kind[] = ["climate", "weather", "media", "scenes", "camera", "clock"];
 /** The sizes a widget can take, smallest first. */
 export const sizesFor = (k: Kind): Size[] => (BIG.includes(k) ? ["m", "l", "xl"] : ["s", "m", "l"]);
 

@@ -2,7 +2,7 @@
 import { LitElement, html, css, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { base } from "./lib/base";
-import { AMBIENT_AFTER, AMBIENT_BRIGHTNESS, DOCK_NAMES, IPMA_AREAS, STYLE_NAMES, THEME_NAMES } from "./lib/types";
+import { AMBIENT_AFTER, AMBIENT_BRIGHTNESS, DOCK_NAMES, READY_STYLES, IPMA_AREAS, STYLE_NAMES, THEME_NAMES } from "./lib/types";
 import type { Dashboard, DockPlacement, Home, PendingCode, Screen, Style } from "./lib/types";
 
 interface Hass {
@@ -255,11 +255,11 @@ export class Pine3HomePanel extends LitElement {
               </div>
               <label>Estilo
                 <select ?disabled=${!this.admin} @change=${(e: Event) => this.saveDashboard(d, { style: (e.target as HTMLSelectElement).value as Style })}>
-                  ${this.styles.map((s) => html`<option value=${s} ?selected=${s === d.style}>${STYLE_NAMES[s] ?? s}</option>`)}
+                  ${this.styles.map((s) => html`<option value=${s} ?selected=${s === d.style}>${STYLE_NAMES[s] ?? s}${READY_STYLES.includes(s) ? "" : " (em breve)"}</option>`)}
                 </select>
               </label>
-              <label>Dock
-                <select ?disabled=${!this.admin} @change=${(e: Event) => this.saveDashboard(d, { dock: (e.target as HTMLSelectElement).value as DockPlacement })}>
+              <label title="Só no estilo Vidro; o Bento navega com pílulas no topo">Dock
+                <select ?disabled=${!this.admin || d.style === "bento"} @change=${(e: Event) => this.saveDashboard(d, { dock: (e.target as HTMLSelectElement).value as DockPlacement })}>
                   ${(Object.keys(DOCK_NAMES) as DockPlacement[]).map((k) => html`<option value=${k} ?selected=${k === d.dock}>${DOCK_NAMES[k]}</option>`)}
                 </select>
               </label>

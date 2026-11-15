@@ -1,5 +1,5 @@
 // Vidro: the GlassHome-inspired style, made for the Tab A7 (no backdrop blur; one opaque glass pane per widget).
-import { LitElement, html, nothing, svg, type PropertyValues, type TemplateResult } from "lit";
+import { LitElement, html, nothing, svg, type CSSResultGroup, type PropertyValues, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { styleMap } from "lit/directives/style-map.js";
@@ -77,28 +77,28 @@ export class Pine3Vidro extends LitElement {
   /** Whether the screen runs inside the Pine3 Wallpanel app. */
   @property({ type: Boolean }) wallpanel = false;
 
-  @state() private editing: string | null = null; // the view being edited
-  @state() private draft: Layout | null = null;
-  @state() private moving: string | null = null;
-  @state() private saving = false;
-  private lastReorder = 0;
+  @state() protected editing: string | null = null; // the view being edited
+  @state() protected draft: Layout | null = null;
+  @state() protected moving: string | null = null;
+  @state() protected saving = false;
+  protected lastReorder = 0;
 
-  @state() private view = "home"; // "home" or a room id
-  @state() private category = "all";
-  @state() private sheet: string | null = null; // entity id
-  @state() private drag: { key: string; value: number } | null = null;
-  @state() private now = new Date();
-  @state() private hourly: HourForecast[] = [];
-  @state() private warnings: IpmaWarning[] = [];
-  @state() private history: Record<string, number[]> = {};
-  @state() private flash: string | null = null;
-  private historyAt: Record<string, number> = {};
-  private historyWanted = new Set<string>();
-  private ipmaAt = 0;
-  private ipmaArea: string | null = null;
-  private press?: Press;
-  private clock?: number;
-  private forecastAt = 0;
+  @state() protected view = "home"; // "home" or a room id
+  @state() protected category = "all";
+  @state() protected sheet: string | null = null; // entity id
+  @state() protected drag: { key: string; value: number } | null = null;
+  @state() protected now = new Date();
+  @state() protected hourly: HourForecast[] = [];
+  @state() protected warnings: IpmaWarning[] = [];
+  @state() protected history: Record<string, number[]> = {};
+  @state() protected flash: string | null = null;
+  protected historyAt: Record<string, number> = {};
+  protected historyWanted = new Set<string>();
+  protected ipmaAt = 0;
+  protected ipmaArea: string | null = null;
+  protected press?: Press;
+  protected clock?: number;
+  protected forecastAt = 0;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -125,7 +125,7 @@ export class Pine3Vidro extends LitElement {
     }
   }
 
-  private async loadForecast(entity: string): Promise<void> {
+  protected async loadForecast(entity: string): Promise<void> {
     try {
       const r = await this.conn.sendMessagePromise<{ response: Record<string, { forecast: HourForecast[] }> }>({
         type: "call_service", domain: "weather", service: "get_forecasts", service_data: { type: "hourly" }, target: { entity_id: entity }, return_response: true,
@@ -147,7 +147,7 @@ export class Pine3Vidro extends LitElement {
     }
   }
 
-  private async loadHistory(ids: string[]): Promise<void> {
+  protected async loadHistory(ids: string[]): Promise<void> {
     try {
       const r = await this.conn.sendMessagePromise<Record<string, Array<{ s: string }>>>({
         type: "history/history_during_period", start_time: new Date(Date.now() - 24 * 3600_000).toISOString(), entity_ids: ids,
@@ -166,7 +166,7 @@ export class Pine3Vidro extends LitElement {
     }
   }
 
-  private async loadWarnings(area: string): Promise<void> {
+  protected async loadWarnings(area: string): Promise<void> {
     try {
       const r = await this.conn.sendMessagePromise<{ warnings: IpmaWarning[] }>({ type: "pine3_home/ipma_warnings", area });
       const now = Date.now();
@@ -179,11 +179,11 @@ export class Pine3Vidro extends LitElement {
   }
 
   // ---------- services ----------
-  private call(domain: string, service: string, entity: string | string[], data: Record<string, unknown> = {}): void {
+  protected call(domain: string, service: string, entity: string | string[], data: Record<string, unknown> = {}): void {
     void callService(this.conn, domain, service, data, { entity_id: entity }).catch((err) => console.warn("Pine3 Home:", err));
   }
 
-  private toggle(id: string): void {
+  protected toggle(id: string): void {
     const d = domainOf(id);
     const s = this.entities[id];
     if (d === "lock") return this.call("lock", s?.state === "locked" ? "unlock" : "lock", id);
@@ -195,7 +195,7 @@ export class Pine3Vidro extends LitElement {
   }
 
   /** The value a slider tile shows (0..100), and how to set it. */
-  private level(w: Widget): number | null {
+  protected level(w: Widget): number | null {
     if (this.drag?.key === w.key) return this.drag.value;
     if (w.kind === "room-lights") return avgBrightness(w.entities!, this.entities);
     const s = this.entities[w.entity!];
@@ -204,7 +204,7 @@ export class Pine3Vidro extends LitElement {
     return null;
   }
 
-  private setLevel(w: Widget, v: number): void {
+  protected setLevel(w: Widget, v: number): void {
     v = Math.round(v);
     if (w.kind === "room-lights" || w.kind === "light") {
       const ids = w.kind === "light" ? w.entity! : w.entities!;
@@ -215,7 +215,7 @@ export class Pine3Vidro extends LitElement {
     }
   }
 
-  private slidable(w: Widget): boolean {
+  protected slidable(w: Widget): boolean {
     if (w.kind === "room-lights") return true;
     const s = this.entities[w.entity ?? ""];
     if (!s) return false;
@@ -225,7 +225,7 @@ export class Pine3Vidro extends LitElement {
   }
 
   // ---------- tile gestures: tap, drag across the tile, long press ----------
-  private down(e: PointerEvent, w: Widget): void {
+  protected down(e: PointerEvent, w: Widget): void {
     if ((e.target as HTMLElement).closest("button")) return;
     if (this.editing) {
       this.press = { key: w.key, x: e.clientX, y: e.clientY, rect: (e.currentTarget as HTMLElement).getBoundingClientRect(), dragging: false, long: false, timer: 0 };
@@ -240,7 +240,7 @@ export class Pine3Vidro extends LitElement {
     this.press = p;
   }
 
-  private move(e: PointerEvent, w: Widget): void {
+  protected move(e: PointerEvent, w: Widget): void {
     const p = this.press;
     if (!p || p.key !== w.key || p.long) return;
     if (this.editing) return this.moveInEdit(e, p);
@@ -257,7 +257,7 @@ export class Pine3Vidro extends LitElement {
     this.drag = { key: w.key, value: Math.round(v) };
   }
 
-  private up(_e: PointerEvent, w: Widget): void {
+  protected up(_e: PointerEvent, w: Widget): void {
     const p = this.press;
     if (!p || p.key !== w.key) return;
     clearTimeout(p.timer);
@@ -279,7 +279,7 @@ export class Pine3Vidro extends LitElement {
     this.tap(w);
   }
 
-  private cancel(): void {
+  protected cancel(): void {
     if (this.press) clearTimeout(this.press.timer);
     this.press = undefined;
     this.moving = null;
@@ -300,17 +300,17 @@ export class Pine3Vidro extends LitElement {
     return !!this.editing || !!this.press;
   }
 
-  private main(): HTMLElement | null {
+  protected main(): HTMLElement | null {
     return this.renderRoot?.querySelector(".main") ?? null;
   }
 
   // ---------- editing the layout ----------
-  private arranged(view: string, auto: Widget[]): Widget[] {
+  protected arranged(view: string, auto: Widget[]): Widget[] {
     const layout = this.editing === view && this.draft ? this.draft : this.dashboard.layouts?.[view];
     return arrange(auto, layout, this.home);
   }
 
-  private startEdit(view: string, auto: Widget[]): void {
+  protected startEdit(view: string, auto: Widget[]): void {
     const saved = this.dashboard.layouts?.[view];
     this.draft = { items: arrange(auto, saved, this.home).map((w) => ({ key: w.key, size: w.size })), hidden: [...(saved?.hidden ?? [])] };
     this.editing = view;
@@ -318,13 +318,13 @@ export class Pine3Vidro extends LitElement {
     this.sheet = null;
   }
 
-  private stopEdit(): void {
+  protected stopEdit(): void {
     this.editing = null;
     this.draft = null;
     this.moving = null;
   }
 
-  private async saveLayout(layout: Layout | null): Promise<void> {
+  protected async saveLayout(layout: Layout | null): Promise<void> {
     const view = this.editing;
     if (!view) return;
     this.saving = true;
@@ -342,7 +342,7 @@ export class Pine3Vidro extends LitElement {
     }
   }
 
-  private moveInEdit(e: PointerEvent, p: Press): void {
+  protected moveInEdit(e: PointerEvent, p: Press): void {
     if (!p.dragging) {
       if (Math.hypot(e.clientX - p.x, e.clientY - p.y) < DRAG_START) return;
       p.dragging = true;
@@ -363,25 +363,25 @@ export class Pine3Vidro extends LitElement {
     this.draft = { ...this.draft, items };
   }
 
-  private hideWidget(key: string): void {
+  protected hideWidget(key: string): void {
     if (!this.draft) return;
     this.draft = { items: this.draft.items.filter((i) => i.key !== key), hidden: [...this.draft.hidden, key] };
   }
 
-  private resizeWidget(w: Widget): void {
+  protected resizeWidget(w: Widget): void {
     if (!this.draft) return;
     const sizes = sizesFor(w.kind);
     const next = sizes[(sizes.indexOf(w.size) + 1) % sizes.length];
     this.draft = { ...this.draft, items: this.draft.items.map((i) => (i.key === w.key ? { ...i, size: next } : i)) };
   }
 
-  private addWidget(w: Widget): void {
+  protected addWidget(w: Widget): void {
     if (!this.draft) return;
     this.draft = { items: [...this.draft.items, { key: w.key, size: w.size }], hidden: this.draft.hidden.filter((k) => k !== w.key) };
   }
 
   /** The edit buttons of a view: a pencil, or Cancelar / Repor / Concluído while editing. */
-  private editControls(view: string, auto: Widget[]) {
+  protected editControls(view: string, auto: Widget[]) {
     if (this.editing === view) {
       return html`<button class="pill" @click=${() => this.stopEdit()}>Cancelar</button>
         ${this.dashboard.layouts?.[view] ? html`<button class="pill" ?disabled=${this.saving} @click=${() => this.saveLayout(null)}>${icon(ICONS.restore)} Repor</button>` : nothing}
@@ -392,7 +392,7 @@ export class Pine3Vidro extends LitElement {
       : nothing;
   }
 
-  private renderPicker(view: string, auto: Widget[]) {
+  protected renderPicker(view: string, auto: Widget[]) {
     if (this.editing !== view || !this.draft) return nothing;
     const options = addable(auto, this.draft, this.home);
     return html`<div class="picker">
@@ -403,7 +403,7 @@ export class Pine3Vidro extends LitElement {
     </div>`;
   }
 
-  private tap(w: Widget): void {
+  protected tap(w: Widget): void {
     switch (w.kind) {
       case "room-lights": {
         const anyOn = w.entities!.some((id) => this.entities[id]?.state === "on");
@@ -436,7 +436,7 @@ export class Pine3Vidro extends LitElement {
     }
   }
 
-  private longPress(w: Widget): void {
+  protected longPress(w: Widget): void {
     if (w.kind === "room-lights" && w.room) {
       this.openRoom(w.room.id);
       return;
@@ -444,7 +444,7 @@ export class Pine3Vidro extends LitElement {
     if (w.entity) this.sheet = w.entity;
   }
 
-  private openRoom(id: string): void {
+  protected openRoom(id: string): void {
     if (this.editing && this.editing !== id) this.stopEdit();
     this.view = id;
     this.category = "all";
@@ -452,7 +452,7 @@ export class Pine3Vidro extends LitElement {
   }
 
   // ---------- render ----------
-  private get dark(): boolean {
+  protected get dark(): boolean {
     if (this.dashboard.theme === "claro") return false;
     if (this.dashboard.theme === "auto") return this.entities["sun.sun"]?.state !== "above_horizon";
     return true;
@@ -472,7 +472,7 @@ export class Pine3Vidro extends LitElement {
 
   /** The ambient face: time, date, the weather and one line about the house. Always dark, and it drifts a little
    * every minute so nothing stays on the same pixels. Any touch (or movement, in Pine3 Wallpanel) wakes it. */
-  private renderAmbient() {
+  protected renderAmbient() {
     const s = summary(this.home, this.entities);
     const w = this.home.weather ? this.entities[this.home.weather] : undefined;
     const t = w?.attributes.temperature as number | undefined;
@@ -498,7 +498,7 @@ export class Pine3Vidro extends LitElement {
     </div>`;
   }
 
-  private renderDock() {
+  protected renderDock() {
     const rooms = this.home.rooms.filter((r) => !r.hidden && r.devices.some((d) => !d.hidden));
     return html`<nav class="dock" aria-label="Vistas">
       <button class=${classMap({ di: true, on: this.view === "home" })} @click=${() => this.openRoom("home")} aria-label="Casa">
@@ -524,7 +524,7 @@ export class Pine3Vidro extends LitElement {
     </nav>`;
   }
 
-  private renderHeader(title: TemplateResult | string, sub: string, controls: unknown = nothing) {
+  protected renderHeader(title: TemplateResult | string, sub: string, controls: unknown = nothing) {
     const s = summary(this.home, this.entities);
     const persons = this.home.persons.map((id) => this.entities[id]).filter((p): p is HassEntity => !!p);
     return html`<header class="hdr">
@@ -545,13 +545,13 @@ export class Pine3Vidro extends LitElement {
     </header>`;
   }
 
-  private greeting(): string {
+  protected greeting(): string {
     const h = this.now.getHours();
     const g = h < 6 ? "Boa noite" : h < 13 ? "Bom dia" : h < 20 ? "Boa tarde" : "Boa noite";
     return `${g} · ${this.now.toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" })}`;
   }
 
-  private renderHome() {
+  protected renderHome() {
     const time = this.now.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
     const auto = homeWidgets(this.home, this.entities);
     const widgets = this.arranged("home", auto);
@@ -561,14 +561,14 @@ export class Pine3Vidro extends LitElement {
       ${this.renderPicker("home", auto)}`;
   }
 
-  private viewWidgets(id: string): Widget[] {
+  protected viewWidgets(id: string): Widget[] {
     if (id === "@clima") return climateWidgets(this.home, this.entities);
     if (id === "@seguranca") return securityWidgets(this.home, this.entities);
     if (id === "@cenas") return sceneWidgets(this.home, this.entities);
     return [];
   }
 
-  private renderView(id: string) {
+  protected renderView(id: string) {
     const v = VIEWS.find((x) => x.id === id)!;
     const auto = this.viewWidgets(id);
     const widgets = this.arranged(id, auto);
@@ -584,7 +584,7 @@ export class Pine3Vidro extends LitElement {
       ${this.renderPicker(id, auto)}`;
   }
 
-  private renderRoom(room: Room) {
+  protected renderRoom(room: Room) {
     const auto = roomWidgets(room);
     const all = this.arranged(room.id, auto);
     const editing = this.editing === room.id;
@@ -614,7 +614,7 @@ export class Pine3Vidro extends LitElement {
       ${this.renderPicker(room.id, auto)}`;
   }
 
-  private renderWidget(w: Widget) {
+  protected renderWidget(w: Widget) {
     const s = w.entity ? this.entities[w.entity] : undefined;
     if (w.entity && w.kind !== "weather" && !s) return nothing;
     const body = this.widgetBody(w, s);
@@ -623,9 +623,11 @@ export class Pine3Vidro extends LitElement {
       [w.size]: true,
       on: (body.on ?? false) || this.flash === w.key,
       att: body.att ?? false,
-      off: unavailable(s) && w.kind !== "room-lights" && w.kind !== "scenes",
+      off: !!w.entity && unavailable(s),
       dragging: this.drag?.key === w.key,
       moving: this.moving === w.key,
+      [`k-${w.kind}`]: true,
+      idle: w.kind === "climate" && s?.state === "off",
     };
     const editing = !!this.editing;
     return html`<div class=${classMap(cls)} style=${body.style ?? ""} data-key=${w.key}
@@ -644,7 +646,7 @@ export class Pine3Vidro extends LitElement {
     </div>`;
   }
 
-  private widgetBody(w: Widget, s?: HassEntity): {
+  protected widgetBody(w: Widget, s?: HassEntity): {
     hero: unknown; small?: string; tag?: string; art?: unknown; fill?: number | null; color?: string; on?: boolean; att?: boolean;
     extra?: unknown; ctl?: unknown; style?: string; heroStyle?: string;
   } {
@@ -755,6 +757,11 @@ export class Pine3Vidro extends LitElement {
           art: spark(dc === "humidity" ? "#3db8f5" : dc === "temperature" ? "#ff9f43" : "#5be3a0", values),
         };
       }
+      case "clock":
+        return {
+          hero: this.now.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }),
+          small: this.now.toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" }),
+        };
       case "scene":
         return { hero: "", art: sceneArt(), extra: html`<span class="go">${this.flash === w.key ? "Ativada" : "Tocar para ativar"}</span>` };
       case "camera": {
@@ -768,7 +775,7 @@ export class Pine3Vidro extends LitElement {
     }
   }
 
-  private name(id: string, room?: Room): string {
+  protected name(id: string, room?: Room): string {
     for (const r of this.home.rooms) {
       const d = r.devices.find((x) => x.id === id);
       if (d) return d.name;
@@ -777,7 +784,7 @@ export class Pine3Vidro extends LitElement {
     return room && n.toLowerCase().startsWith(room.name.toLowerCase() + " ") ? n.slice(room.name.length + 1) : n;
   }
 
-  private stepTemp(id: string, dir: number): void {
+  protected stepTemp(id: string, dir: number): void {
     const s = this.entities[id];
     const step = (s?.attributes.target_temp_step as number) ?? 0.5;
     const t = (s?.attributes.temperature as number) ?? 20;
@@ -787,7 +794,7 @@ export class Pine3Vidro extends LitElement {
   }
 
   // ---------- the sheet beside the widgets ----------
-  private renderSheet(id: string) {
+  protected renderSheet(id: string) {
     const s = this.entities[id];
     if (!s) return nothing;
     const d = domainOf(id);
@@ -802,7 +809,7 @@ export class Pine3Vidro extends LitElement {
       </aside>`;
   }
 
-  private bigSlider(key: string, value: number, color: string, label: string, set: (v: number) => void) {
+  protected bigSlider(key: string, value: number, color: string, label: string, set: (v: number) => void) {
     const shown = this.drag?.key === key ? this.drag.value : value;
     const at = (e: PointerEvent) => {
       const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -815,7 +822,7 @@ export class Pine3Vidro extends LitElement {
       <i style=${`width:${shown}%;background:${color}`}></i><b>${shown}%</b></div>`;
   }
 
-  private sheetBody(id: string, s: HassEntity) {
+  protected sheetBody(id: string, s: HassEntity) {
     const d = domainOf(id);
     if (d === "light") {
       const modes = (s.attributes.supported_color_modes as string[]) ?? [];
@@ -882,7 +889,7 @@ export class Pine3Vidro extends LitElement {
       ${["switch", "light", "fan", "input_boolean", "vacuum"].includes(d) ? html`<div class="foot"><button class="pill pri" @click=${() => this.toggle(id)}>${icon(ICONS.power)} ${isOn(s) ? "Desligar" : "Ligar"}</button></div>` : nothing}`;
   }
 
-  static styles = vidroStyles;
+  static styles: CSSResultGroup = vidroStyles;
 }
 
 function hexRgb(hex: string): [number, number, number] {
