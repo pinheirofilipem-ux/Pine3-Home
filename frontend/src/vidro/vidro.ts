@@ -17,7 +17,7 @@ const LONG_PRESS = 550;
 const DRAG_START = 10;
 const HVAC: Record<string, string> = { heat: "Calor", cool: "Frio", heat_cool: "Auto", auto: "Auto", dry: "Seco", fan_only: "Ventilar", off: "Off" };
 const ACTION: Record<string, string> = { heating: "a aquecer", cooling: "a arrefecer", idle: "em pausa", off: "desligado", drying: "a secar", fan: "a ventilar" };
-const WEATHER: Record<string, string> = {
+export const WEATHER: Record<string, string> = {
   "clear-night": "céu limpo", cloudy: "nublado", fog: "nevoeiro", hail: "granizo", lightning: "trovoada", "lightning-rainy": "trovoada e chuva",
   partlycloudy: "pouco nublado", pouring: "chuva forte", rainy: "chuva", snowy: "neve", "snowy-rainy": "chuva e neve", sunny: "sol",
   windy: "vento", "windy-variant": "vento", exceptional: "excecional",

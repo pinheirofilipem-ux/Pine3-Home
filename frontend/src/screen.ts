@@ -17,9 +17,10 @@ import "./vidro/vidro";
 import "./vidro/bento";
 import "./vidro/moldura";
 import "./vidro/editorial";
+import "./vidro/instrumento";
 import { html as shtml, unsafeStatic } from "lit/static-html.js";
 
-const STYLE_TAGS: Record<string, string> = { vidro: "pine3-vidro", bento: "pine3-bento", moldura: "pine3-moldura", editorial: "pine3-editorial" };
+const STYLE_TAGS: Record<string, string> = { vidro: "pine3-vidro", bento: "pine3-bento", moldura: "pine3-moldura", editorial: "pine3-editorial", instrumento: "pine3-instrumento" };
 import type { Pine3Vidro } from "./vidro/vidro";
 import { applyBrightness, bridge, onWallpanel } from "./lib/wallpanel";
 import type { Home, Me } from "./lib/types";
@@ -88,7 +89,7 @@ export class Pine3Screen extends LitElement {
 
   // ---------- ambient face ----------
   private get vidro(): Pine3Vidro | null {
-    return this.renderRoot.querySelector("pine3-vidro, pine3-bento, pine3-moldura, pine3-editorial");
+    return this.renderRoot.querySelector("pine3-vidro, pine3-bento, pine3-moldura, pine3-editorial, pine3-instrumento");
   }
 
   private activity(e?: Event): void {
