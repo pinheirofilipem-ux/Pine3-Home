@@ -1,6 +1,6 @@
 // Turns the home model and live states into Vidro widgets.
 import type { HassEntities, HassEntity } from "home-assistant-js-websocket";
-import type { Device, Home, Room } from "../lib/types";
+import type { Device, Home, Layout, Room } from "../lib/types";
 
 export type Kind = "room-lights" | "scene" | "camera" | "light" | "climate" | "weather" | "lock" | "cover" | "media" | "vacuum" | "scenes" | "fan" | "switch" | "outlet" | "sensor" | "binary";
 export type Size = "s" | "m" | "l" | "xl"; // 1x1, 2x1, 2x2, 3x2 on a 6-column grid
@@ -151,4 +151,46 @@ export function sceneWidgets(home: Home, e: HassEntities): Widget[] {
   return [...home.scenes, ...home.scripts]
     .filter((id) => e[id])
     .map((id) => ({ key: id, kind: "scene" as Kind, size: "s" as Size, name: (e[id].attributes.friendly_name as string) ?? id, entity: id }));
+}
+
+const BIG: Kind[] = ["climate", "weather", "media", "scenes", "camera"];
+/** The sizes a widget can take, smallest first. */
+export const sizesFor = (k: Kind): Size[] => (BIG.includes(k) ? ["m", "l", "xl"] : ["s", "m", "l"]);
+
+export function findDevice(home: Home, id: string): Widget | null {
+  for (const r of home.rooms) {
+    const d = r.devices.find((x) => x.id === id);
+    if (d) return deviceWidget(d, r);
+  }
+  return null;
+}
+
+/** The automatic widgets of a view, arranged by its saved layout: saved order and sizes first, new widgets after. */
+export function arrange(auto: Widget[], layout: Layout | undefined, home: Home): Widget[] {
+  if (!layout) return auto;
+  const byKey = new Map(auto.map((w) => [w.key, w]));
+  const hidden = new Set(layout.hidden);
+  const out: Widget[] = [];
+  const seen = new Set<string>();
+  for (const it of layout.items) {
+    if (seen.has(it.key) || hidden.has(it.key)) continue;
+    const w = byKey.get(it.key) ?? findDevice(home, it.key);
+    if (!w) continue; // a device that no longer exists
+    seen.add(it.key);
+    const size = it.size && sizesFor(w.kind).includes(it.size) ? it.size : w.size;
+    out.push({ ...w, size });
+  }
+  for (const w of auto) if (!seen.has(w.key) && !hidden.has(w.key)) out.push(w);
+  return out;
+}
+
+/** What can be added to a view: its hidden widgets, then every other device of the house. */
+export function addable(auto: Widget[], layout: Layout, home: Home): Widget[] {
+  const present = new Set(layout.items.map((i) => i.key));
+  const hiddenAuto = auto.filter((w) => layout.hidden.includes(w.key));
+  const devices = home.rooms
+    .filter((r) => !r.hidden)
+    .flatMap((r) => r.devices.filter((d) => !d.hidden).map((d) => deviceWidget(d, r)))
+    .filter((w): w is Widget => !!w && !present.has(w.key) && !hiddenAuto.some((h) => h.key === w.key) && !auto.some((a) => a.key === w.key && !layout.hidden.includes(a.key)));
+  return [...hiddenAuto, ...devices];
 }

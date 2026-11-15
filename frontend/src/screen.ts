@@ -156,7 +156,7 @@ export class Pine3Screen extends LitElement {
     if (!this.home || !this.conn) return html`<main class="center"><p class="muted">A carregar a casa…</p></main>`;
     // Phase 1 ships Vidro; the other styles fall back to it until they arrive.
     return html`<pine3-vidro .home=${this.home} .entities=${this.entities} .dashboard=${me.dashboard} .conn=${this.conn}
-      .screenName=${me.screen?.name ?? ""}></pine3-vidro>`;
+      .screenName=${me.screen?.name ?? ""} ?canEdit=${me.is_admin || me.dashboard.screen_edit !== false}></pine3-vidro>`;
   }
 
   render() {

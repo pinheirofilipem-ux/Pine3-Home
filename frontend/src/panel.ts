@@ -131,7 +131,7 @@ export class Pine3HomePanel extends LitElement {
     return this.run(async () => {
       const r = await this.hass!.callWS<{ dashboards: Dashboard[] }>({
         type: "pine3_home/dashboards/save",
-        dashboard: { id: d.id, name: d.name, style: d.style, dock: d.dock, theme: d.theme, ...changes },
+        dashboard: { id: d.id, name: d.name, style: d.style, dock: d.dock, theme: d.theme, screen_edit: d.screen_edit !== false, ...changes },
       });
       this.dashboards = r.dashboards;
     });
@@ -149,6 +149,16 @@ export class Pine3HomePanel extends LitElement {
       .slice(0, 32) || "painel";
     while (this.dashboards.some((d) => d.id === id)) id = `${id.slice(0, 28)}-${Math.floor(Math.random() * 900 + 100)}`;
     return this.saveDashboard({ id, name, style: "vidro", dock: "left", theme: "grafite" }, {});
+  }
+
+  private resetLayouts(d: Dashboard): Promise<void> | void {
+    if (!confirm(`Repor a disposição automática de todas as vistas de ${d.name}?`)) return;
+    return this.run(async () => {
+      for (const view of Object.keys(d.layouts ?? {})) {
+        await this.hass!.callWS({ type: "pine3_home/dashboards/layout", dashboard_id: d.id, view, layout: null });
+      }
+      await this.load();
+    }, `Disposição de ${d.name} reposta.`);
   }
 
   private removeDashboard(d: Dashboard): Promise<void> | void {
@@ -258,6 +268,14 @@ export class Pine3HomePanel extends LitElement {
                   ${Object.entries(THEME_NAMES).map(([k, n]) => html`<option value=${k} ?selected=${k === d.theme}>${n}</option>`)}
                 </select>
               </label>
+              <label class="check">
+                <input type="checkbox" ?disabled=${!this.admin} .checked=${d.screen_edit !== false}
+                  @change=${(e: Event) => this.saveDashboard(d, { screen_edit: (e.target as HTMLInputElement).checked })} />
+                Editar nos ecrãs
+              </label>
+              ${this.admin && Object.keys(d.layouts ?? {}).length
+                ? html`<button @click=${() => this.resetLayouts(d)}>Repor layouts</button>`
+                : nothing}
               ${this.admin && this.dashboards.length > 1 ? html`<button class="danger" @click=${() => this.removeDashboard(d)}>Remover</button>` : nothing}
             </li>`,
           )}
@@ -317,6 +335,12 @@ export class Pine3HomePanel extends LitElement {
         gap: 4px;
         font-size: 0.8rem;
         color: var(--p3-muted);
+      }
+      label.check {
+        flex-direction: row;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.9rem;
       }
       .pair {
         display: flex;

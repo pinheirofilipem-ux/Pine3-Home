@@ -4,11 +4,11 @@ import { customElement, property, state } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { styleMap } from "lit/directives/style-map.js";
 import { callService, type Connection, type HassEntities, type HassEntity } from "home-assistant-js-websocket";
-import type { Dashboard, Home, Room } from "../lib/types";
+import type { Dashboard, Home, Layout, Room } from "../lib/types";
 import { ICONS, roomIcon } from "./icons";
 import { album, blind, fanArt, lamp, lockArt, plugArt, robot, sceneArt, spark, thermo, weatherArt } from "./art";
 import {
-  CATEGORIES, avgBrightness, brightness, climateWidgets, domainOf, fmt, homeWidgets, sceneWidgets, securityWidgets, isOn, lightColor, roomLights, roomWidgets, summary, unavailable,
+  CATEGORIES, addable, arrange, sizesFor, avgBrightness, brightness, climateWidgets, domainOf, fmt, homeWidgets, sceneWidgets, securityWidgets, isOn, lightColor, roomLights, roomWidgets, summary, unavailable,
   type Widget,
 } from "./model";
 import { vidroStyles } from "./styles";
@@ -70,6 +70,14 @@ export class Pine3Vidro extends LitElement {
   @property({ attribute: false }) dashboard!: Dashboard;
   @property({ attribute: false }) conn!: Connection;
   @property() screenName = "";
+  /** Whether this screen may edit the dashboard's layout (an admin, or a screen allowed to). */
+  @property({ type: Boolean }) canEdit = false;
+
+  @state() private editing: string | null = null; // the view being edited
+  @state() private draft: Layout | null = null;
+  @state() private moving: string | null = null;
+  @state() private saving = false;
+  private lastReorder = 0;
 
   @state() private view = "home"; // "home" or a room id
   @state() private category = "all";
@@ -215,6 +223,10 @@ export class Pine3Vidro extends LitElement {
   // ---------- tile gestures: tap, drag across the tile, long press ----------
   private down(e: PointerEvent, w: Widget): void {
     if ((e.target as HTMLElement).closest("button")) return;
+    if (this.editing) {
+      this.press = { key: w.key, x: e.clientX, y: e.clientY, rect: (e.currentTarget as HTMLElement).getBoundingClientRect(), dragging: false, long: false, timer: 0 };
+      return;
+    }
     const el = e.currentTarget as HTMLElement;
     const p: Press = { key: w.key, x: e.clientX, y: e.clientY, rect: el.getBoundingClientRect(), dragging: false, long: false, timer: 0 };
     p.timer = window.setTimeout(() => {
@@ -227,6 +239,7 @@ export class Pine3Vidro extends LitElement {
   private move(e: PointerEvent, w: Widget): void {
     const p = this.press;
     if (!p || p.key !== w.key || p.long) return;
+    if (this.editing) return this.moveInEdit(e, p);
     const dx = e.clientX - p.x;
     const dy = e.clientY - p.y;
     if (!p.dragging) {
@@ -245,6 +258,10 @@ export class Pine3Vidro extends LitElement {
     if (!p || p.key !== w.key) return;
     clearTimeout(p.timer);
     this.press = undefined;
+    if (this.editing) {
+      this.moving = null;
+      return;
+    }
     if (p.long) return;
     if (p.dragging) {
       const v = this.drag?.value ?? 0;
@@ -261,6 +278,106 @@ export class Pine3Vidro extends LitElement {
   private cancel(): void {
     if (this.press) clearTimeout(this.press.timer);
     this.press = undefined;
+    this.moving = null;
+  }
+
+  // ---------- editing the layout ----------
+  private arranged(view: string, auto: Widget[]): Widget[] {
+    const layout = this.editing === view && this.draft ? this.draft : this.dashboard.layouts?.[view];
+    return arrange(auto, layout, this.home);
+  }
+
+  private startEdit(view: string, auto: Widget[]): void {
+    const saved = this.dashboard.layouts?.[view];
+    this.draft = { items: arrange(auto, saved, this.home).map((w) => ({ key: w.key, size: w.size })), hidden: [...(saved?.hidden ?? [])] };
+    this.editing = view;
+    this.category = "all";
+    this.sheet = null;
+  }
+
+  private stopEdit(): void {
+    this.editing = null;
+    this.draft = null;
+    this.moving = null;
+  }
+
+  private async saveLayout(layout: Layout | null): Promise<void> {
+    const view = this.editing;
+    if (!view) return;
+    this.saving = true;
+    try {
+      const r = await this.conn.sendMessagePromise<{ dashboard: Dashboard }>({
+        type: "pine3_home/dashboards/layout", dashboard_id: this.dashboard.id, view, layout,
+      });
+      this.dashboard = { ...this.dashboard, layouts: r.dashboard.layouts };
+      this.stopEdit();
+    } catch (err) {
+      console.warn("Pine3 Home: layout", err);
+      alert("Não foi possível guardar. Este ecrã pode não ter permissão para editar este painel.");
+    } finally {
+      this.saving = false;
+    }
+  }
+
+  private moveInEdit(e: PointerEvent, p: Press): void {
+    if (!p.dragging) {
+      if (Math.hypot(e.clientX - p.x, e.clientY - p.y) < DRAG_START) return;
+      p.dragging = true;
+      this.moving = p.key;
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    }
+    const target = (this.renderRoot as ShadowRoot).elementsFromPoint(e.clientX, e.clientY)
+      .map((el) => (el as HTMLElement).closest?.(".w") as HTMLElement | null)
+      .find((el) => el && el.dataset.key && el.dataset.key !== p.key);
+    if (!target || !this.draft || Date.now() - this.lastReorder < 180) return;
+    const items = [...this.draft.items];
+    const from = items.findIndex((i) => i.key === p.key);
+    const to = items.findIndex((i) => i.key === target.dataset.key);
+    if (from < 0 || to < 0) return;
+    const [it] = items.splice(from, 1);
+    items.splice(to, 0, it);
+    this.lastReorder = Date.now();
+    this.draft = { ...this.draft, items };
+  }
+
+  private hideWidget(key: string): void {
+    if (!this.draft) return;
+    this.draft = { items: this.draft.items.filter((i) => i.key !== key), hidden: [...this.draft.hidden, key] };
+  }
+
+  private resizeWidget(w: Widget): void {
+    if (!this.draft) return;
+    const sizes = sizesFor(w.kind);
+    const next = sizes[(sizes.indexOf(w.size) + 1) % sizes.length];
+    this.draft = { ...this.draft, items: this.draft.items.map((i) => (i.key === w.key ? { ...i, size: next } : i)) };
+  }
+
+  private addWidget(w: Widget): void {
+    if (!this.draft) return;
+    this.draft = { items: [...this.draft.items, { key: w.key, size: w.size }], hidden: this.draft.hidden.filter((k) => k !== w.key) };
+  }
+
+  /** The edit buttons of a view: a pencil, or Cancelar / Repor / Concluído while editing. */
+  private editControls(view: string, auto: Widget[]) {
+    if (this.editing === view) {
+      return html`<button class="pill" @click=${() => this.stopEdit()}>Cancelar</button>
+        ${this.dashboard.layouts?.[view] ? html`<button class="pill" ?disabled=${this.saving} @click=${() => this.saveLayout(null)}>${icon(ICONS.restore)} Repor</button>` : nothing}
+        <button class="pill pri" ?disabled=${this.saving} @click=${() => this.saveLayout(this.draft)}>${icon(ICONS.check)} Concluído</button>`;
+    }
+    return this.canEdit && !this.editing
+      ? html`<button class="pill icon" aria-label="Editar esta vista" title="Editar" @click=${() => this.startEdit(view, auto)}>${icon(ICONS.edit)}</button>`
+      : nothing;
+  }
+
+  private renderPicker(view: string, auto: Widget[]) {
+    if (this.editing !== view || !this.draft) return nothing;
+    const options = addable(auto, this.draft, this.home);
+    return html`<div class="picker">
+      <div class="phd"><span class="k">Adicionar · toca para pôr no fim</span><span class="k">Arrasta os cartões para mudar a ordem</span></div>
+      <div class="prow">${options.length
+        ? options.map((w) => html`<button class="pk" @click=${() => this.addWidget(w)}><span>${w.name}</span><em>${w.room?.name ?? ""}</em></button>`)
+        : html`<span class="k">Já está tudo nesta vista.</span>`}</div>
+    </div>`;
   }
 
   private tap(w: Widget): void {
@@ -305,6 +422,7 @@ export class Pine3Vidro extends LitElement {
   }
 
   private openRoom(id: string): void {
+    if (this.editing && this.editing !== id) this.stopEdit();
     this.view = id;
     this.category = "all";
     this.sheet = null;
@@ -320,7 +438,7 @@ export class Pine3Vidro extends LitElement {
   render() {
     if (!this.home) return nothing;
     const room = this.home.rooms.find((r) => r.id === this.view);
-    const cls = { vd: true, light: !this.dark, [`dock-${this.dashboard.dock}`]: true };
+    const cls = { vd: true, light: !this.dark, editing: !!this.editing, [`dock-${this.dashboard.dock}`]: true };
     return html`<div class=${classMap(cls)}>
       ${this.renderDock()}
       <main class="main">${room ? this.renderRoom(room) : this.view.startsWith("@") ? this.renderView(this.view) : this.renderHome()}</main>
@@ -354,13 +472,13 @@ export class Pine3Vidro extends LitElement {
     </nav>`;
   }
 
-  private renderHeader(title: TemplateResult | string, sub: string) {
+  private renderHeader(title: TemplateResult | string, sub: string, controls: unknown = nothing) {
     const s = summary(this.home, this.entities);
     const persons = this.home.persons.map((id) => this.entities[id]).filter((p): p is HassEntity => !!p);
     return html`<header class="hdr">
       <div class="t"><span>${sub}</span><b>${title}</b></div>
       <div class="chips">
-        ${s.temp ? html`<span class="chip"><i style="background:#34c759;color:#06210f">${icon(ICONS.therm)}</i><span>Clima<small>${s.temp}</small></span></span>` : nothing}
+        ${this.editing ? nothing : html`${s.temp ? html`<span class="chip"><i style="background:#34c759;color:#06210f">${icon(ICONS.therm)}</i><span>Clima<small>${s.temp}</small></span></span>` : nothing}
         <span class="chip"><i style="background:#ffcf8a;color:#2a1a04">${icon(ICONS.bulb)}</i><span>Luzes<small>${s.lightsOn ? `${s.lightsOn} acesa${s.lightsOn > 1 ? "s" : ""}` : "apagadas"}</small></span></span>
         <span class="chip"><i style=${s.alerts ? "background:#ff8a5c;color:#2a0f04" : "background:#5be3a0;color:#06210f"}>${icon(ICONS.shield)}</i><span>Segurança<small>${s.alertText}</small></span></span>
         ${persons.length
@@ -369,7 +487,8 @@ export class Pine3Vidro extends LitElement {
               const name = (p.attributes.friendly_name as string) ?? p.entity_id;
               return html`<span class="av" title=${name} style=${pic ? `background-image:url(${pic})` : ""}>${pic ? "" : name[0]}${p.state === "home" ? html`<i></i>` : nothing}</span>`;
             })}</div>`
-          : nothing}
+          : nothing}`}
+        ${controls}
       </div>
     </header>`;
   }
@@ -382,9 +501,12 @@ export class Pine3Vidro extends LitElement {
 
   private renderHome() {
     const time = this.now.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
-    const widgets = homeWidgets(this.home, this.entities);
-    return html`${this.renderHeader(time, this.greeting())}
-      ${widgets.length ? html`<div class="grid">${widgets.map((w) => this.renderWidget(w))}</div>` : html`<p class="empty">Ainda não há divisões com dispositivos. Atribui áreas aos dispositivos no Home Assistant.</p>`}`;
+    const auto = homeWidgets(this.home, this.entities);
+    const widgets = this.arranged("home", auto);
+    const editing = this.editing === "home";
+    return html`${editing ? this.renderHeader("A editar", "Casa", this.editControls("home", auto)) : this.renderHeader(time, this.greeting(), this.editControls("home", auto))}
+      ${widgets.length || editing ? html`<div class=${classMap({ grid: true, edit: editing })}>${widgets.map((w) => this.renderWidget(w))}</div>` : html`<p class="empty">Ainda não há divisões com dispositivos. Atribui áreas aos dispositivos no Home Assistant.</p>`}
+      ${this.renderPicker("home", auto)}`;
   }
 
   private viewWidgets(id: string): Widget[] {
@@ -396,40 +518,48 @@ export class Pine3Vidro extends LitElement {
 
   private renderView(id: string) {
     const v = VIEWS.find((x) => x.id === id)!;
-    const widgets = this.viewWidgets(id);
+    const auto = this.viewWidgets(id);
+    const widgets = this.arranged(id, auto);
+    const editing = this.editing === id;
     const s = summary(this.home, this.entities);
     const facts = id === "@clima" ? s.temp ?? "" : id === "@seguranca" ? s.alertText : `${widgets.length} cenas e rotinas`;
     return html`<div class="rtop">
         <button class="back" @click=${() => this.openRoom("home")} aria-label="Voltar à casa">${icon(ICONS.back)}</button>
-        <b>${v.name}</b><span>${facts}</span>
+        <b>${v.name}</b><span>${editing ? "a editar" : facts}</span>
+        <div class="act">${this.editControls(id, auto)}</div>
       </div>
-      ${widgets.length ? html`<div class="grid">${widgets.map((w) => this.renderWidget(w))}</div>` : html`<p class="empty">Nada para mostrar aqui.</p>`}`;
+      ${widgets.length || editing ? html`<div class=${classMap({ grid: true, edit: editing })}>${widgets.map((w) => this.renderWidget(w))}</div>` : html`<p class="empty">Nada para mostrar aqui.</p>`}
+      ${this.renderPicker(id, auto)}`;
   }
 
   private renderRoom(room: Room) {
-    const all = roomWidgets(room);
+    const auto = roomWidgets(room);
+    const all = this.arranged(room.id, auto);
+    const editing = this.editing === room.id;
     const count = (kinds: string[]) => (kinds.length ? all.filter((w) => kinds.includes(w.kind)).length : all.length);
     const cats = CATEGORIES.filter((c) => count(c.kinds) > 0);
     const cat = cats.find((c) => c.id === this.category) ?? cats[0];
-    const shown = cat && cat.kinds.length ? all.filter((w) => cat.kinds.includes(w.kind)) : all;
+    const shown = !editing && cat && cat.kinds.length ? all.filter((w) => cat.kinds.includes(w.kind)) : all;
     const lights = roomLights(room);
     const t = room.temperature ? this.entities[room.temperature]?.state : null;
     const h = room.humidity ? this.entities[room.humidity]?.state : null;
     const facts = [t && t !== "unavailable" ? `${fmt(parseFloat(t))}°` : null, h && h !== "unavailable" ? `${fmt(parseFloat(h), 0)}%` : null, room.floor].filter(Boolean).join(" · ");
     return html`<div class="rtop">
         <button class="back" @click=${() => this.openRoom("home")} aria-label="Voltar à casa">${icon(ICONS.back)}</button>
-        <b>${room.name}</b><span>${facts}</span>
-        ${lights.length
-          ? html`<div class="act">
-              <button class="pill" @click=${() => this.call("light", "turn_on", lights)}>${icon(ICONS.bulb)} Acender</button>
-              <button class="pill pri" @click=${() => this.call("light", "turn_off", lights)}>Apagar</button>
-            </div>`
-          : nothing}
+        <b>${room.name}</b><span>${editing ? "a editar" : facts}</span>
+        <div class="act">
+          ${lights.length && !editing
+            ? html`<button class="pill" @click=${() => this.call("light", "turn_on", lights)}>${icon(ICONS.bulb)} Acender</button>
+              <button class="pill pri" @click=${() => this.call("light", "turn_off", lights)}>Apagar</button>`
+            : nothing}
+          ${this.editControls(room.id, auto)}
+        </div>
       </div>
-      ${cats.length > 2
+      ${cats.length > 2 && !editing
         ? html`<div class="cats">${cats.map((c) => html`<button class=${classMap({ on: c === cat })} @click=${() => (this.category = c.id)}>${c.name}<em>${count(c.kinds)}</em></button>`)}</div>`
         : nothing}
-      <div class="grid">${shown.map((w) => this.renderWidget(w))}</div>`;
+      <div class=${classMap({ grid: true, edit: editing })}>${shown.map((w) => this.renderWidget(w))}</div>
+      ${this.renderPicker(room.id, auto)}`;
   }
 
   private renderWidget(w: Widget) {
@@ -443,8 +573,10 @@ export class Pine3Vidro extends LitElement {
       att: body.att ?? false,
       off: unavailable(s) && w.kind !== "room-lights" && w.kind !== "scenes",
       dragging: this.drag?.key === w.key,
+      moving: this.moving === w.key,
     };
-    return html`<div class=${classMap(cls)} style=${body.style ?? ""}
+    const editing = !!this.editing;
+    return html`<div class=${classMap(cls)} style=${body.style ?? ""} data-key=${w.key}
         @pointerdown=${(e: PointerEvent) => this.down(e, w)} @pointermove=${(e: PointerEvent) => this.move(e, w)}
         @pointerup=${(e: PointerEvent) => this.up(e, w)} @pointercancel=${() => this.cancel()} @contextmenu=${(e: Event) => e.preventDefault()}>
       ${body.fill != null ? html`<div class="fill" style=${styleMap({ width: `${body.fill}%`, "--fc": body.color ?? "255,207,138" })}></div>` : nothing}
@@ -452,7 +584,11 @@ export class Pine3Vidro extends LitElement {
       <span class="nm">${w.name}${body.tag ? html`<em>${body.tag}</em>` : nothing}</span>
       ${body.extra ?? nothing}
       <div class="hero" style=${body.heroStyle ?? ""}>${body.hero}${body.small ? html`<small>${body.small}</small>` : nothing}</div>
-      ${body.ctl ?? nothing}
+      ${editing ? nothing : body.ctl ?? nothing}
+      ${editing
+        ? html`<button class="rmv" aria-label=${`Esconder ${w.name}`} @click=${() => this.hideWidget(w.key)}>${icon(ICONS.minus)}</button>
+          <button class="handle" aria-label=${`Mudar o tamanho de ${w.name}`} @click=${() => this.resizeWidget(w)}>${icon(ICONS.resize)}<b>${w.size.toUpperCase()}</b></button>`
+        : nothing}
     </div>`;
   }
 
