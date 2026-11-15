@@ -61,4 +61,8 @@ const ROOM: Record<string, string> = {
   "mdi:stairs": mdiStairs,
 };
 
+/** The icons offered in Definições → Divisões. */
+export const ROOM_ICON_CHOICES = Object.keys(ROOM);
+export const roomIconPath = (icon: string): string => ROOM[icon] ?? ICONS.room;
+
 export const roomIcon = (icon: string | null | undefined): string => (icon && ROOM[icon]) || ICONS.room;

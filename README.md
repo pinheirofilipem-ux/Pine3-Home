@@ -8,6 +8,8 @@ Uma app para o Home Assistant com vários painéis para a casa, e uma página le
 
 - **Painel no Home Assistant** (barra lateral, *Pine3 Home*): é o próprio painel, no estilo escolhido. O ⚙ abre as definições em ecrã inteiro, como no Pine3 View:
   - **Aparência**, com pré-visualização ao vivo: estilo, tema e dock;
+  - **Divisões**: ordem, ícone e as que aparecem;
+  - **Entidades**, como no Pine3 View: pesquisa, um interruptor por entidade, principais e secundárias, diagnóstico;
   - **Face ambiente**;
   - **Casa**: avisos do IPMA;
   - **Ecrãs e painéis**: emparelhar, escolher o painel de cada ecrã, criar e renomear painéis;

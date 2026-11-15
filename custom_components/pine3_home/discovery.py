@@ -312,7 +312,7 @@ def build_home(hass: HomeAssistant, settings: dict[str, Any]) -> dict[str, Any]:
         out.append({
             "id": area_id,
             "name": name,
-            "icon": room_icon(name, getattr(area, "icon", None) if area else None),
+            "icon": settings.get("room_icons", {}).get(area_id) or room_icon(name, getattr(area, "icon", None) if area else None),
             "picture": getattr(area, "picture", None) if area else None,
             "floor": floor_level.get(floor_id, (None, None))[1],
             "floor_level": floor_level.get(floor_id, (0, None))[0] if floor_id else 0,

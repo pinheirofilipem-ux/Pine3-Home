@@ -162,3 +162,14 @@ async def test_home_settings(hass: HomeAssistant, pine3, hass_ws_client) -> None
     assert (await admin.receive_json())["result"]["settings"]["ipma_area"] == "LSB"
     await admin.send_json({"id": 3, "type": "pine3_home/home/settings", "ipma_area": "lisboa"})
     assert not (await admin.receive_json())["success"]
+
+
+async def test_entities_and_rooms_settings(hass: HomeAssistant, pine3, hass_ws_client) -> None:
+    admin = await hass_ws_client(hass)
+    await admin.send_json({"id": 1, "type": "pine3_home/home/settings", "hidden": ["light.a"], "shown": ["sensor.b"],
+                           "hidden_rooms": ["quarto"], "room_order": ["sala", "cozinha"], "room_icons": {"sala": "mdi:sofa"}})
+    res = (await result(admin, 1))["result"]["settings"]
+    assert res["hidden"] == ["light.a"] and res["shown"] == ["sensor.b"] and res["room_icons"] == {"sala": "mdi:sofa"}
+    # an icon must be an mdi icon name
+    await admin.send_json({"id": 2, "type": "pine3_home/home/settings", "room_icons": {"sala": "<svg>"}})
+    assert not (await result(admin, 2))["success"]

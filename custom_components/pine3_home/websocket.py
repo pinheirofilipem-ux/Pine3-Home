@@ -23,7 +23,7 @@ STYLES = ["vidro", "bento", "moldura", "editorial", "instrumento", "orbita", "ca
 DOCK_PLACEMENTS = ["left", "bottom"]
 DEFAULT_DASHBOARD = {"id": "casa", "name": "Casa", "style": "vidro", "dock": "left", "theme": "grafite"}
 DEFAULT_DATA: dict[str, Any] = {
-    "home": {"hidden": [], "hidden_rooms": [], "room_order": [], "shown": [], "ipma_area": None},
+    "home": {"hidden": [], "hidden_rooms": [], "room_order": [], "shown": [], "room_icons": {}, "ipma_area": None},
     "dashboards": [DEFAULT_DASHBOARD],
     "screens": [],
     "screen_user_id": None,
@@ -133,13 +133,16 @@ def ws_subscribe(hass: HomeAssistant, connection: websocket_api.ActiveConnection
     vol.Optional("hidden"): [str],
     vol.Optional("hidden_rooms"): [str],
     vol.Optional("room_order"): [str],
+    vol.Optional("shown"): [str],
+    vol.Optional("room_icons"): {str: vol.Match(r"^mdi:[a-z0-9-]{1,60}$")},
 })
 @websocket_api.require_admin
 @websocket_api.async_response
 async def ws_home_settings(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
-    """Settings of the house shared by every dashboard (the IPMA warning area, hidden devices and rooms)."""
+    """Settings of the house shared by every dashboard: the IPMA warning area, the devices hidden and the extra
+    entities shown as tiles (Entidades), and the rooms' order, icons and the hidden ones (Divisões)."""
     home = _data(hass)["home"]
-    for key in ("ipma_area", "hidden", "hidden_rooms", "room_order"):
+    for key in ("ipma_area", "hidden", "hidden_rooms", "room_order", "shown", "room_icons"):
         if key in msg:
             home[key] = msg[key]
     await hass.data[DOMAIN]["save"]()
