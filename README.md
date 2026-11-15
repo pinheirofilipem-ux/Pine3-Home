@@ -32,7 +32,8 @@ Uma app para o Home Assistant com vários painéis para a casa, e uma página le
 | 4 | Face ambiente e ponte com o Pine3 Wallpanel (movimento, ecrã, brilho) |
 | 5 | Estilo **Bento**: blocos de cor, pílulas no topo, vista Divisões |
 | 6 | Estilo **Moldura**: a casa como uma imagem, deslizar entre vistas, painel claro por cima |
-| 7+ | Os restantes estilos: Editorial, Instrumento, Órbita, Carteira, Lente |
+| 7 | Estilo **Editorial**: página de revista, índice em palavras, a casa numa frase |
+| 8+ | Os restantes estilos: Instrumento, Órbita, Carteira, Lente |
 
 ## Desenvolvimento
 
