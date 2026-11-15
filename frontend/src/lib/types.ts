@@ -112,7 +112,7 @@ export const STYLE_NAMES: Record<Style, string> = {
 };
 
 /** The styles that exist so far; the others show Vidro until they arrive. */
-export const READY_STYLES: Style[] = ["vidro", "bento", "moldura", "editorial", "instrumento"];
+export const READY_STYLES: Style[] = ["vidro", "bento", "moldura", "editorial", "instrumento", "orbita", "carteira"];
 
 export const DOCK_NAMES: Record<DockPlacement, string> = { left: "À esquerda", bottom: "Em baixo" };
 

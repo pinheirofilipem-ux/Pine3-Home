@@ -30,7 +30,7 @@ const SECTIONS: Array<{ id: Section; name: string; icon: string }> = [
 ];
 const STYLES: Style[] = ["vidro", "bento", "moldura", "editorial", "instrumento", "orbita", "carteira", "lente"];
 const NAV_OF: Record<string, string> = {
-  bento: "pílulas no topo", moldura: "deslizar, com pontos no canto", editorial: "índice em palavras", instrumento: "banco de teclas",
+  bento: "pílulas no topo", orbita: "uma roda que abre do botão em baixo", carteira: "separadores à direita, como cartões numa carteira", moldura: "deslizar, com pontos no canto", editorial: "índice em palavras", instrumento: "banco de teclas",
 };
 const PREVIEW_W = 1334;
 const PREVIEW_H = 800;
