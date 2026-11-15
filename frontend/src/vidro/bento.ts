@@ -19,6 +19,7 @@ const PILLS = trNames([
   { id: "@clima", name: "Clima", color: "#ffb08a", icon: ICONS.therm },
   { id: "@seguranca", name: "Segurança", color: "#bfe0ff", icon: ICONS.shield },
   { id: "@cenas", name: "Cenas", color: "#ffd0c2", icon: ICONS.spark },
+  { id: "@casa3d", name: "Casa 3D", color: "#d8cdf5", icon: ICONS.cube },
 ]);
 const ROOM_COLORS = ["#ffd166", "#d9f2e3", "#c9b8ff", "#ffd0c2", "#bfe0ff", "#ffb08a", "#e9f5a8"];
 const CLOCK: Widget = { key: "clock", kind: "clock", size: "l", name: "" };
@@ -46,7 +47,7 @@ export class Pine3Bento extends Pine3Vidro {
   private renderPills() {
     const inRoom = this.home.rooms.some((r) => r.id === this.view);
     const alerts = summary(this.home, this.entities).alerts;
-    const shown = PILLS.filter((p) => p.id === "home" || p.id === "@divisoes" || this.viewWidgets(p.id).length);
+    const shown = PILLS.filter((p) => p.id === "home" || p.id === "@divisoes" || this.viewAvailable(p.id));
     return html`<nav class="bnav" aria-label=${tr("Vistas")}>
       ${shown.map((p) => {
         const on = this.view === p.id || (p.id === "@divisoes" && inRoom);

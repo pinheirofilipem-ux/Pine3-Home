@@ -15,7 +15,7 @@ import { ICONS } from "./icons";
 import type { Room } from "../lib/types";
 
 const icon = (path: string) => svg`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d=${path} fill="currentColor"/></svg>`;
-const NAMES: Record<string, string> = trMap({ home: "Casa", "@divisoes": "Divisões", "@clima": "Clima", "@seguranca": "Segurança", "@cenas": "Cenas" });
+const NAMES: Record<string, string> = trMap({ home: "Casa", "@divisoes": "Divisões", "@clima": "Clima", "@seguranca": "Segurança", "@cenas": "Cenas", "@casa3d": "Casa 3D" });
 const PINCH = 60; // px the two fingers come together to zoom out
 
 @customElement("pine3-lente")
@@ -30,7 +30,8 @@ export class Pine3Lente extends Pine3Vidro {
 
   // two fingers coming together: zoom out to every view
   private touchStart(e: TouchEvent): void {
-    this.pinch = e.touches.length === 2 ? this.spread(e) : undefined;
+    // pinching the Casa 3D zooms the house, not out of the view
+    this.pinch = e.touches.length === 2 && !(e.target as HTMLElement).closest?.("pine3-house") ? this.spread(e) : undefined;
   }
 
   private touchMove(e: TouchEvent): void {
@@ -93,6 +94,7 @@ export class Pine3Lente extends Pine3Vidro {
     ];
     if (this.viewWidgets("@clima").length) cards.push({ id: "@clima", name: tr("Clima"), sub: cs ? (cs.state === "off" ? tr("desligado") : `${fmt((cs.attributes.temperature as number) ?? 0)}°`) : s.temp ?? "", ill: nothing });
     if (this.viewWidgets("@seguranca").length) cards.push({ id: "@seguranca", name: tr("Segurança"), sub: s.alertText, ill: nothing });
+    if (this.viewAvailable("@casa3d")) cards.push({ id: "@casa3d", name: tr("Casa 3D"), sub: trn(rooms.length, "{n} divisão", "{n} divisões"), ill: nothing });
     if (this.viewWidgets("@cenas").length) cards.push({ id: "@cenas", name: tr("Cenas"), sub: trn(this.home.scenes.length + this.home.scripts.length, "{n} cena ou rotina", "{n} cenas e rotinas"), ill: nothing });
     for (const r of rooms) {
       const lights = roomLights(r);

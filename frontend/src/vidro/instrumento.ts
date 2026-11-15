@@ -17,6 +17,7 @@ const KEYS = trNames([
   { id: "@clima", name: "Clima" },
   { id: "@seguranca", name: "Seg." },
   { id: "@cenas", name: "Cenas" },
+  { id: "@casa3d", name: "3D" },
 ]);
 const DIAL = 270; // degrees of travel
 const T_MIN = 16;
@@ -32,7 +33,7 @@ export class Pine3Instrumento extends Pine3Vidro {
     if (this.ambient) return this.renderAmbient();
     const room = this.home.rooms.find((r) => r.id === this.view);
     const cur = room ? "@divisoes" : this.view;
-    const keys = KEYS.filter((k) => k.id === "home" || k.id === "@divisoes" || this.viewWidgets(k.id).length);
+    const keys = KEYS.filter((k) => k.id === "home" || k.id === "@divisoes" || this.viewAvailable(k.id));
     const alerts = summary(this.home, this.entities).alerts;
     return html`<div class=${classMap({ vd: true, instrumento: true, editing: !!this.editing })}>
       <nav class="bank" aria-label=${tr("Vistas")}>

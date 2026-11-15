@@ -12,7 +12,7 @@ import { domainOf, fmt, roomLights, roomLine, summary } from "./model";
 import { ICONS, roomIcon } from "./icons";
 
 const icon = (path: string) => svg`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d=${path} fill="currentColor"/></svg>`;
-const NAMES: Record<string, string> = trMap({ home: "Casa", "@divisoes": "Divisões", "@clima": "Clima", "@seguranca": "Segurança", "@cenas": "Cenas" });
+const NAMES: Record<string, string> = trMap({ home: "Casa", "@divisoes": "Divisões", "@clima": "Clima", "@seguranca": "Segurança", "@cenas": "Cenas", "@casa3d": "Casa 3D" });
 const SWIPE = 70; // px sideways to change view
 
 const HILLS = svg`<svg viewBox="0 0 100 46" preserveAspectRatio="none" aria-hidden="true">
@@ -26,7 +26,7 @@ export class Pine3Moldura extends Pine3Vidro {
 
   /** The views in swipe order (rooms count as Divisões). */
   private get order(): string[] {
-    return ["home", "@divisoes", ...["@clima", "@seguranca", "@cenas"].filter((v) => this.viewWidgets(v).length)];
+    return ["home", "@divisoes", ...["@clima", "@seguranca", "@cenas", "@casa3d"].filter((v) => this.viewAvailable(v))];
   }
 
   private get current(): string {
@@ -42,7 +42,7 @@ export class Pine3Moldura extends Pine3Vidro {
   private swipeDown(e: PointerEvent): void {
     // only on the picture or the panel's own background: tiles have their own sideways drag
     const t = e.target as HTMLElement;
-    if (this.editing || this.sheet || t.closest(".w, button, .sheet, .picker, .bigsl")) return;
+    if (this.editing || this.sheet || t.closest(".w, button, .sheet, .picker, .bigsl, pine3-house")) return;
     this.swipe = { x: e.clientX, y: e.clientY, id: e.pointerId };
   }
 
