@@ -1,14 +1,14 @@
-import{b as u,i as g,n as m,r as n,a as b,A as l,c as t,S as v,D as p,t as $}from"./chunks/types-DHT8ioh6.js";var y=Object.defineProperty,f=Object.getOwnPropertyDescriptor,r=(s,e,a,c)=>{for(var o=c>1?void 0:c?f(e,a):e,h=s.length-1,d;h>=0;h--)(d=s[h])&&(o=(c?d(e,a,o):d(o))||o);return c&&o&&y(e,a,o),o};const w="/pine3/ecra";let i=class extends b{constructor(){super(...arguments),this.narrow=!1,this.dashboards=[],this.styles=[],this.screens=[],this.pending=[],this.code="",this.screenName="",this.screenDash="",this.message=null,this.busy=!1,this.loaded=!1}connectedCallback(){super.connectedCallback();const s=new URLSearchParams(location.search).get("code");s&&/^\d{6}$/.test(s)&&(this.code=s),this.timer=window.setInterval(()=>this.refreshPending(),4e3)}disconnectedCallback(){super.disconnectedCallback(),clearInterval(this.timer)}updated(){this.hass&&!this.loaded&&(this.loaded=!0,this.load())}get admin(){return!!this.hass?.user?.is_admin}async load(){if(!this.hass)return;const s=await this.hass.callWS({type:"pine3_home/dashboards"});if(this.dashboards=s.dashboards,this.styles=s.styles,!this.screenDash&&s.dashboards.length&&(this.screenDash=s.dashboards[0].id),this.admin){const e=await this.hass.callWS({type:"pine3_home/screens"});this.screens=e.screens,await this.refreshPending()}}async refreshPending(){if(!(!this.hass||!this.admin))try{const s=await this.hass.callWS({type:"pine3_home/screens/pending"});this.pending=s.pending}catch{}}async run(s,e){this.busy=!0,this.message=null;try{await s(),e&&(this.message={kind:"ok",text:e})}catch(a){this.message={kind:"bad",text:a.message??String(a)}}finally{this.busy=!1}}approve(){const s=this.screenName.trim()||"Ecrã";return this.run(async()=>{await this.hass.callWS({type:"pine3_home/screens/approve",code:this.code,name:s,dashboard:this.screenDash}),this.code="",this.screenName="",location.search.includes("code=")&&history.replaceState(null,"",location.pathname),await this.load()},`${s} emparelhado. O ecrã liga-se dentro de segundos.`)}setScreenDashboard(s,e){return this.run(async()=>{await this.hass.callWS({type:"pine3_home/screens/update",screen_id:s.id,dashboard:e}),await this.load()})}renameScreen(s){const e=prompt("Nome do ecrã",s.name)?.trim();if(!(!e||e===s.name))return this.run(async()=>{await this.hass.callWS({type:"pine3_home/screens/update",screen_id:s.id,name:e}),await this.load()})}removeScreen(s){if(confirm(`Remover ${s.name}? O ecrã volta a pedir um código.`))return this.run(async()=>{await this.hass.callWS({type:"pine3_home/screens/remove",screen_id:s.id}),await this.load()},`${s.name} removido.`)}saveDashboard(s,e){return this.run(async()=>{const a=await this.hass.callWS({type:"pine3_home/dashboards/save",dashboard:{id:s.id,name:s.name,style:s.style,dock:s.dock,theme:s.theme,...e}});this.dashboards=a.dashboards})}addDashboard(){const s=prompt("Nome do novo painel")?.trim();if(!s)return;let e=s.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,32)||"painel";for(;this.dashboards.some(a=>a.id===e);)e=`${e.slice(0,28)}-${Math.floor(Math.random()*900+100)}`;return this.saveDashboard({id:e,name:s,style:"vidro",dock:"left",theme:"grafite"},{})}removeDashboard(s){if(confirm(`Remover o painel ${s.name}? Os ecrãs que o usam passam para o primeiro painel.`))return this.run(async()=>{const e=await this.hass.callWS({type:"pine3_home/dashboards/remove",dashboard_id:s.id});this.dashboards=e.dashboards,await this.load()})}dashName(s){return this.dashboards.find(e=>e.id===s)?.name??s}render(){if(!this.hass)return l;const s=`${location.origin}${w}`;return t`
+import{b as u,i as b,n as m,r as n,a as g,A as c,c as t,t as $}from"./chunks/base-BYQr5Ns4.js";const v={vidro:"Vidro",bento:"Bento",moldura:"Moldura",editorial:"Editorial",instrumento:"Instrumento",orbita:"Órbita",carteira:"Carteira",lente:"Lente"},p={left:"À esquerda",bottom:"Em baixo"},f={grafite:"Grafite (escuro)",claro:"Claro",auto:"Automático (pôr do sol)"};var y=Object.defineProperty,x=Object.getOwnPropertyDescriptor,r=(a,e,s,l)=>{for(var o=l>1?void 0:l?x(e,s):e,d=a.length-1,h;d>=0;d--)(h=a[d])&&(o=(l?h(e,s,o):h(o))||o);return l&&o&&y(e,s,o),o};const w="/pine3/ecra";let i=class extends g{constructor(){super(...arguments),this.narrow=!1,this.dashboards=[],this.styles=[],this.screens=[],this.pending=[],this.code="",this.screenName="",this.screenDash="",this.message=null,this.busy=!1,this.loaded=!1}connectedCallback(){super.connectedCallback();const a=new URLSearchParams(location.search).get("code");a&&/^\d{6}$/.test(a)&&(this.code=a),this.timer=window.setInterval(()=>this.refreshPending(),4e3)}disconnectedCallback(){super.disconnectedCallback(),clearInterval(this.timer)}updated(){this.hass&&!this.loaded&&(this.loaded=!0,this.load())}get admin(){return!!this.hass?.user?.is_admin}async load(){if(!this.hass)return;const a=await this.hass.callWS({type:"pine3_home/dashboards"});if(this.dashboards=a.dashboards,this.styles=a.styles,!this.screenDash&&a.dashboards.length&&(this.screenDash=a.dashboards[0].id),this.admin){const e=await this.hass.callWS({type:"pine3_home/screens"});this.screens=e.screens,await this.refreshPending()}}async refreshPending(){if(!(!this.hass||!this.admin))try{const a=await this.hass.callWS({type:"pine3_home/screens/pending"});this.pending=a.pending}catch{}}async run(a,e){this.busy=!0,this.message=null;try{await a(),e&&(this.message={kind:"ok",text:e})}catch(s){this.message={kind:"bad",text:s.message??String(s)}}finally{this.busy=!1}}approve(){const a=this.screenName.trim()||"Ecrã";return this.run(async()=>{await this.hass.callWS({type:"pine3_home/screens/approve",code:this.code,name:a,dashboard:this.screenDash}),this.code="",this.screenName="",location.search.includes("code=")&&history.replaceState(null,"",location.pathname),await this.load()},`${a} emparelhado. O ecrã liga-se dentro de segundos.`)}setScreenDashboard(a,e){return this.run(async()=>{await this.hass.callWS({type:"pine3_home/screens/update",screen_id:a.id,dashboard:e}),await this.load()})}renameScreen(a){const e=prompt("Nome do ecrã",a.name)?.trim();if(!(!e||e===a.name))return this.run(async()=>{await this.hass.callWS({type:"pine3_home/screens/update",screen_id:a.id,name:e}),await this.load()})}removeScreen(a){if(confirm(`Remover ${a.name}? O ecrã volta a pedir um código.`))return this.run(async()=>{await this.hass.callWS({type:"pine3_home/screens/remove",screen_id:a.id}),await this.load()},`${a.name} removido.`)}saveDashboard(a,e){return this.run(async()=>{const s=await this.hass.callWS({type:"pine3_home/dashboards/save",dashboard:{id:a.id,name:a.name,style:a.style,dock:a.dock,theme:a.theme,...e}});this.dashboards=s.dashboards})}addDashboard(){const a=prompt("Nome do novo painel")?.trim();if(!a)return;let e=a.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,32)||"painel";for(;this.dashboards.some(s=>s.id===e);)e=`${e.slice(0,28)}-${Math.floor(Math.random()*900+100)}`;return this.saveDashboard({id:e,name:a,style:"vidro",dock:"left",theme:"grafite"},{})}removeDashboard(a){if(confirm(`Remover o painel ${a.name}? Os ecrãs que o usam passam para o primeiro painel.`))return this.run(async()=>{const e=await this.hass.callWS({type:"pine3_home/dashboards/remove",dashboard_id:a.id});this.dashboards=e.dashboards,await this.load()})}dashName(a){return this.dashboards.find(e=>e.id===a)?.name??a}render(){if(!this.hass)return c;const a=`${location.origin}${w}`;return t`
       <header>
         <h1>Pine3 Home</h1>
         <span class="muted">Painéis e ecrãs da casa</span>
       </header>
-      ${this.message?t`<p class="msg ${this.message.kind}" role="status">${this.message.text}</p>`:l}
+      ${this.message?t`<p class="msg ${this.message.kind}" role="status">${this.message.text}</p>`:c}
       ${this.admin?t`
             <section class="pane">
               <h2>Emparelhar um ecrã</h2>
               <p class="muted">
-                No tablet, abre <a href=${s} target="_blank" rel="noopener">${s}</a>. Aparece um código de 6
+                No tablet, abre <a href=${a} target="_blank" rel="noopener">${a}</a>. Aparece um código de 6
                 algarismos: escreve-o aqui ou lê o QR com o telemóvel.
               </p>
               <div class="pair">
@@ -27,7 +27,7 @@ import{b as u,i as g,n as m,r as n,a as b,A as l,c as t,S as v,D as p,t as $}fro
                 </label>
                 <button class="primary" ?disabled=${this.busy||this.code.length!==6} @click=${this.approve}>Emparelhar</button>
               </div>
-              ${this.pending.length?t`<p class="muted">À espera: ${this.pending.map(e=>t`<button class="chip" @click=${()=>this.code=e.code}>${e.code}</button>`)}</p>`:l}
+              ${this.pending.length?t`<p class="muted">À espera: ${this.pending.map(e=>t`<button class="chip" @click=${()=>this.code=e.code}>${e.code}</button>`)}</p>`:c}
             </section>
 
             <section class="pane">
@@ -38,8 +38,8 @@ import{b as u,i as g,n as m,r as n,a as b,A as l,c as t,S as v,D as p,t as $}fro
                           <strong>${e.name}</strong>
                           <span class="muted">${e.active===!1?"token revogado":e.last_used?`visto ${new Date(e.last_used).toLocaleString("pt-PT")}`:"ainda não ligou"}</span>
                         </div>
-                        <select aria-label="Painel de ${e.name}" @change=${a=>this.setScreenDashboard(e,a.target.value)}>
-                          ${this.dashboards.map(a=>t`<option value=${a.id} ?selected=${a.id===e.dashboard}>${a.name}</option>`)}
+                        <select aria-label="Painel de ${e.name}" @change=${s=>this.setScreenDashboard(e,s.target.value)}>
+                          ${this.dashboards.map(s=>t`<option value=${s.id} ?selected=${s.id===e.dashboard}>${s.name}</option>`)}
                         </select>
                         <button @click=${()=>this.renameScreen(e)}>Renomear</button>
                         <button class="danger" @click=${()=>this.removeScreen(e)}>Remover</button>
@@ -49,29 +49,34 @@ import{b as u,i as g,n as m,r as n,a as b,A as l,c as t,S as v,D as p,t as $}fro
           `:t`<section class="pane"><p class="muted">Só um administrador pode emparelhar ecrãs e alterar painéis.</p></section>`}
 
       <section class="pane">
-        <div class="row"><h2 class="grow">Painéis</h2>${this.admin?t`<button @click=${this.addDashboard}>Novo painel</button>`:l}</div>
+        <div class="row"><h2 class="grow">Painéis</h2>${this.admin?t`<button @click=${this.addDashboard}>Novo painel</button>`:c}</div>
         <ul class="list">
           ${this.dashboards.map(e=>t`<li>
               <div class="grow">
                 <strong>${e.name}</strong>
-                <span class="muted">${this.screens.filter(a=>a.dashboard===e.id).length} ecrã(s)</span>
+                <span class="muted">${this.screens.filter(s=>s.dashboard===e.id).length} ecrã(s)</span>
               </div>
               <label>Estilo
-                <select ?disabled=${!this.admin} @change=${a=>this.saveDashboard(e,{style:a.target.value})}>
-                  ${this.styles.map(a=>t`<option value=${a} ?selected=${a===e.style}>${v[a]??a}</option>`)}
+                <select ?disabled=${!this.admin} @change=${s=>this.saveDashboard(e,{style:s.target.value})}>
+                  ${this.styles.map(s=>t`<option value=${s} ?selected=${s===e.style}>${v[s]??s}</option>`)}
                 </select>
               </label>
               <label>Dock
-                <select ?disabled=${!this.admin} @change=${a=>this.saveDashboard(e,{dock:a.target.value})}>
-                  ${Object.keys(p).map(a=>t`<option value=${a} ?selected=${a===e.dock}>${p[a]}</option>`)}
+                <select ?disabled=${!this.admin} @change=${s=>this.saveDashboard(e,{dock:s.target.value})}>
+                  ${Object.keys(p).map(s=>t`<option value=${s} ?selected=${s===e.dock}>${p[s]}</option>`)}
                 </select>
               </label>
-              ${this.admin&&this.dashboards.length>1?t`<button class="danger" @click=${()=>this.removeDashboard(e)}>Remover</button>`:l}
+              <label>Tema
+                <select ?disabled=${!this.admin} @change=${s=>this.saveDashboard(e,{theme:s.target.value})}>
+                  ${Object.entries(f).map(([s,l])=>t`<option value=${s} ?selected=${s===e.theme}>${l}</option>`)}
+                </select>
+              </label>
+              ${this.admin&&this.dashboards.length>1?t`<button class="danger" @click=${()=>this.removeDashboard(e)}>Remover</button>`:c}
             </li>`)}
         </ul>
       </section>
       <footer class="muted">Painel em uso nos ecrãs: ${this.screens.map(e=>`${e.name} → ${this.dashName(e.dashboard)}`).join(" · ")||"—"}</footer>
-    `}};i.styles=[u,g`
+    `}};i.styles=[u,b`
       :host {
         display: block;
         min-height: 100vh;

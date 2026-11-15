@@ -2,7 +2,7 @@
 import { LitElement, html, css, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { base } from "./lib/base";
-import { DOCK_NAMES, STYLE_NAMES } from "./lib/types";
+import { DOCK_NAMES, STYLE_NAMES, THEME_NAMES } from "./lib/types";
 import type { Dashboard, DockPlacement, PendingCode, Screen, Style } from "./lib/types";
 
 interface Hass {
@@ -241,6 +241,11 @@ export class Pine3HomePanel extends LitElement {
               <label>Dock
                 <select ?disabled=${!this.admin} @change=${(e: Event) => this.saveDashboard(d, { dock: (e.target as HTMLSelectElement).value as DockPlacement })}>
                   ${(Object.keys(DOCK_NAMES) as DockPlacement[]).map((k) => html`<option value=${k} ?selected=${k === d.dock}>${DOCK_NAMES[k]}</option>`)}
+                </select>
+              </label>
+              <label>Tema
+                <select ?disabled=${!this.admin} @change=${(e: Event) => this.saveDashboard(d, { theme: (e.target as HTMLSelectElement).value })}>
+                  ${Object.entries(THEME_NAMES).map(([k, n]) => html`<option value=${k} ?selected=${k === d.theme}>${n}</option>`)}
                 </select>
               </label>
               ${this.admin && this.dashboards.length > 1 ? html`<button class="danger" @click=${() => this.removeDashboard(d)}>Remover</button>` : nothing}
