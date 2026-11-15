@@ -10,6 +10,16 @@ export interface Dashboard {
   dock: DockPlacement;
   theme: string;
   views?: unknown[] | null;
+  /** Per view ("home", a room id, "@clima"...): the order and size of its widgets, and the hidden ones. */
+  layouts?: Record<string, Layout>;
+  /** Whether the wall screens showing this dashboard may edit it. */
+  screen_edit?: boolean;
+}
+
+export type WidgetSize = "s" | "m" | "l" | "xl";
+export interface Layout {
+  items: Array<{ key: string; size?: WidgetSize }>;
+  hidden: string[];
 }
 
 export interface Screen {

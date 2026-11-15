@@ -627,6 +627,130 @@ export const vidroStyles = css`
     background: #ff8a5c;
     color: #2a0f04;
   }
+  /* ---------- edit mode ---------- */
+  .pill.icon {
+    padding: calc(var(--u) * 0.8);
+    font-size: calc(var(--u) * 1.5);
+  }
+  .pill:disabled {
+    opacity: 0.5;
+  }
+  .grid.edit .w {
+    outline: 1px dashed color-mix(in srgb, var(--acc) 60%, transparent);
+    outline-offset: -1px;
+    touch-action: none;
+    cursor: grab;
+    animation: wiggle 0.5s ease-in-out infinite alternate;
+  }
+  .grid.edit .w > :not(.rmv):not(.handle) {
+    pointer-events: none;
+  }
+  .grid.edit .w:nth-child(2n) {
+    animation-delay: -0.25s;
+  }
+  .grid.edit .w.moving {
+    animation: none;
+    opacity: 0.55;
+    transform: scale(1.04);
+    cursor: grabbing;
+    z-index: 3;
+  }
+  @keyframes wiggle {
+    from {
+      transform: rotate(-0.35deg);
+    }
+    to {
+      transform: rotate(0.35deg);
+    }
+  }
+  .rmv,
+  .handle {
+    position: absolute;
+    z-index: 4;
+    display: grid;
+    place-items: center;
+  }
+  .rmv {
+    left: calc(var(--u) * 0.7);
+    top: calc(var(--u) * 0.7);
+    width: calc(var(--u) * 2.6);
+    height: calc(var(--u) * 2.6);
+    border-radius: 50%;
+    background: #ff5f57;
+    color: #fff;
+    font-size: calc(var(--u) * 1.6);
+  }
+  .grid.edit .w .nm {
+    padding-left: calc(var(--u) * 2.6);
+  }
+  .handle {
+    right: calc(var(--u) * 0.8);
+    bottom: calc(var(--u) * 0.8);
+    grid-auto-flow: column;
+    gap: calc(var(--u) * 0.3);
+    padding: calc(var(--u) * 0.45) calc(var(--u) * 0.8);
+    border-radius: calc(var(--u) * 0.8);
+    background: var(--acc);
+    color: #04202e;
+    font-size: calc(var(--u) * 1.3);
+  }
+  .handle b {
+    font-size: calc(var(--u) * 0.95);
+  }
+  .editing .main {
+    padding-bottom: calc(var(--u) * 20);
+  }
+  .picker {
+    position: fixed;
+    z-index: 4;
+    right: calc(var(--u) * 1.6);
+    bottom: calc(var(--u) * 1.6);
+    left: calc(var(--u) * 1.6);
+    border-radius: calc(var(--u) * 2.4);
+    background: var(--sheet);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 calc(var(--u) * -2) calc(var(--u) * 4) calc(var(--u) * -2) rgba(0, 0, 0, 0.6);
+    padding: calc(var(--u) * 1.4);
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--u) * 1);
+  }
+  .dock-left .picker {
+    left: calc(var(--u) * 10.4);
+  }
+  .dock-bottom .picker {
+    bottom: calc(var(--u) * 10.4);
+  }
+  .phd {
+    display: flex;
+    justify-content: space-between;
+    gap: calc(var(--u) * 1);
+  }
+  .prow {
+    display: flex;
+    gap: calc(var(--u) * 1);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .pk {
+    flex: none;
+    width: calc(var(--u) * 14);
+    height: calc(var(--u) * 7.4);
+    border-radius: calc(var(--u) * 1.6);
+    background: var(--card);
+    box-shadow: var(--rim);
+    padding: calc(var(--u) * 1);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-start;
+    text-align: left;
+    font-size: calc(var(--u) * 1.1);
+  }
+  .pk em {
+    font-style: normal;
+    font-size: calc(var(--u) * 0.9);
+    color: var(--muted);
+  }
   .spin {
     animation: spin 1.2s linear infinite;
   }

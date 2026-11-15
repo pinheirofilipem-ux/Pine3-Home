@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import time
 from typing import Any
 
@@ -30,6 +31,12 @@ DEFAULT_DATA: dict[str, Any] = {
 }
 REGISTRY_EVENTS = ("area_registry_updated", "device_registry_updated", "entity_registry_updated", "floor_registry_updated")
 SLUG = vol.Match(r"^[a-z0-9_-]{1,32}$")
+SIZES = ["s", "m", "l", "xl"]
+VIEW_ID = vol.All(str, vol.Length(min=1, max=80))
+LAYOUT = vol.Schema({
+    vol.Required("items"): vol.All([{vol.Required("key"): vol.All(str, vol.Length(max=120)), vol.Optional("size"): vol.In(SIZES)}], vol.Length(max=200)),
+    vol.Required("hidden"): vol.All([vol.All(str, vol.Length(max=120))], vol.Length(max=200)),
+})
 DASHBOARD = vol.Schema({
     vol.Required("id"): SLUG,
     vol.Required("name"): vol.All(str, vol.Length(min=1, max=40)),
@@ -37,6 +44,8 @@ DASHBOARD = vol.Schema({
     vol.Optional("dock", default="left"): vol.In(DOCK_PLACEMENTS),
     vol.Optional("theme", default="grafite"): vol.All(str, vol.Length(max=32)),
     vol.Optional("views"): vol.Any(None, list),
+    vol.Optional("layouts"): {VIEW_ID: LAYOUT},
+    vol.Optional("screen_edit", default=True): bool,
 })
 
 
@@ -51,17 +60,18 @@ def _pairing(hass: HomeAssistant) -> PairingManager:
 async def async_setup_api(hass: HomeAssistant) -> None:
     store: Store = Store(hass, 1, STORAGE_KEY)
     stored = await store.async_load() or {}
-    data = {**DEFAULT_DATA, **stored}
-    data["home"] = {**DEFAULT_DATA["home"], **data.get("home", {})}
+    # deep copies: the defaults must never be changed by what the house stores
+    data = {**copy.deepcopy(DEFAULT_DATA), **stored}
+    data["home"] = {**copy.deepcopy(DEFAULT_DATA["home"]), **data.get("home", {})}
     if not data.get("dashboards"):
-        data["dashboards"] = [dict(DEFAULT_DASHBOARD)]
+        data["dashboards"] = [copy.deepcopy(DEFAULT_DASHBOARD)]
 
     async def _save() -> None:
         await store.async_save(data)
 
     hass.data[DOMAIN] = {"store": store, "data": data, "save": _save, "unsubs": [], "pairing": PairingManager(hass, data, _save)}
 
-    for cmd in (ws_home, ws_subscribe, ws_home_settings, ws_ipma_warnings, ws_me, ws_dashboards, ws_dashboard_save, ws_dashboard_remove,
+    for cmd in (ws_home, ws_subscribe, ws_home_settings, ws_ipma_warnings, ws_me, ws_dashboards, ws_dashboard_save, ws_dashboard_remove, ws_dashboard_layout,
                 ws_screens, ws_pending, ws_approve, ws_screen_update, ws_screen_remove):
         websocket_api.async_register_command(hass, cmd)
 
@@ -172,6 +182,35 @@ async def ws_dashboard_save(hass: HomeAssistant, connection: websocket_api.Activ
     await hass.data[DOMAIN]["save"]()
     hass.bus.async_fire(EVENT_UPDATED)
     connection.send_result(msg["id"], {"dashboards": dashboards})
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): f"{DOMAIN}/dashboards/layout",
+    vol.Required("dashboard_id"): SLUG,
+    vol.Required("view"): VIEW_ID,
+    vol.Required("layout"): vol.Any(None, LAYOUT),
+})
+@websocket_api.async_response
+async def ws_dashboard_layout(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+    """Save (or with null, reset) the layout of one view. Allowed for administrators, and for a paired screen
+    editing the dashboard it shows, unless editing on screens is turned off for that dashboard."""
+    dash = next((d for d in _data(hass)["dashboards"] if d["id"] == msg["dashboard_id"]), None)
+    if dash is None:
+        connection.send_error(msg["id"], "unknown_dashboard", "Esse painel não existe.")
+        return
+    if not connection.user.is_admin:
+        screen = _pairing(hass).screen_for_token(connection.refresh_token_id)
+        if screen is None or screen["dashboard"] != dash["id"] or dash.get("screen_edit", True) is False:
+            connection.send_error(msg["id"], websocket_api.ERR_UNAUTHORIZED, "Este ecrã não pode editar esse painel.")
+            return
+    layouts = dash.setdefault("layouts", {})
+    if msg["layout"] is None:
+        layouts.pop(msg["view"], None)
+    else:
+        layouts[msg["view"]] = msg["layout"]
+    await hass.data[DOMAIN]["save"]()
+    hass.bus.async_fire(EVENT_UPDATED)
+    connection.send_result(msg["id"], {"dashboard": dash})
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/dashboards/remove", vol.Required("dashboard_id"): SLUG})

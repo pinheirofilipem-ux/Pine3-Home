@@ -83,8 +83,26 @@ async def test_pairing_flow(hass: HomeAssistant, pine3, hass_client_no_auth, has
     await ws.send_json({"id": 3, "type": "pine3_home/screens"})
     assert (await ws.receive_json())["error"]["code"] == "unauthorized"
 
+    # the screen may edit the layout of its own dashboard
+    layout = {"items": [{"key": "climate.sala", "size": "xl"}], "hidden": ["scenes"]}
+    await ws.send_json({"id": 4, "type": "pine3_home/dashboards/layout", "dashboard_id": "casa", "view": "home", "layout": layout})
+    assert (await ws.receive_json())["result"]["dashboard"]["layouts"]["home"] == layout
+    # ...not another dashboard's
+    await admin.send_json({"id": 3, "type": "pine3_home/dashboards/save", "dashboard": {"id": "outro", "name": "Outro", "style": "vidro"}})
+    await admin.receive_json()
+    await ws.send_json({"id": 5, "type": "pine3_home/dashboards/layout", "dashboard_id": "outro", "view": "home", "layout": None})
+    assert (await ws.receive_json())["error"]["code"] == "unauthorized"
+    # ...and not when editing on screens is turned off
+    await admin.send_json({"id": 4, "type": "pine3_home/dashboards/save", "dashboard": {"id": "casa", "name": "Casa", "style": "vidro", "screen_edit": False}})
+    await admin.receive_json()
+    await ws.send_json({"id": 6, "type": "pine3_home/dashboards/layout", "dashboard_id": "casa", "view": "home", "layout": None})
+    assert (await ws.receive_json())["error"]["code"] == "unauthorized"
+    # an administrator can always reset it
+    await admin.send_json({"id": 5, "type": "pine3_home/dashboards/layout", "dashboard_id": "casa", "view": "home", "layout": None})
+    assert "home" not in (await admin.receive_json())["result"]["dashboard"]["layouts"]
+
     # removing the screen revokes its token
-    await admin.send_json({"id": 3, "type": "pine3_home/screens/remove", "screen_id": screen["id"]})
+    await admin.send_json({"id": 6, "type": "pine3_home/screens/remove", "screen_id": screen["id"]})
     assert (await admin.receive_json())["success"]
     assert hass.auth.async_validate_access_token(token) is None
 
