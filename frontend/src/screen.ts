@@ -16,9 +16,10 @@ import { pairStatus, startPairing, storeToken, storedToken, type PairStart } fro
 import "./vidro/vidro";
 import "./vidro/bento";
 import "./vidro/moldura";
+import "./vidro/editorial";
 import { html as shtml, unsafeStatic } from "lit/static-html.js";
 
-const STYLE_TAGS: Record<string, string> = { vidro: "pine3-vidro", bento: "pine3-bento", moldura: "pine3-moldura" };
+const STYLE_TAGS: Record<string, string> = { vidro: "pine3-vidro", bento: "pine3-bento", moldura: "pine3-moldura", editorial: "pine3-editorial" };
 import type { Pine3Vidro } from "./vidro/vidro";
 import { applyBrightness, bridge, onWallpanel } from "./lib/wallpanel";
 import type { Home, Me } from "./lib/types";
@@ -86,7 +87,7 @@ export class Pine3Screen extends LitElement {
 
   // ---------- ambient face ----------
   private get vidro(): Pine3Vidro | null {
-    return this.renderRoot.querySelector("pine3-vidro, pine3-bento, pine3-moldura");
+    return this.renderRoot.querySelector("pine3-vidro, pine3-bento, pine3-moldura, pine3-editorial");
   }
 
   private activity(e?: Event): void {
