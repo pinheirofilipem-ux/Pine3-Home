@@ -13,14 +13,9 @@ import {
 } from "home-assistant-js-websocket";
 import { base } from "./lib/base";
 import { pairStatus, startPairing, storeToken, storedToken, type PairStart } from "./lib/pairing";
-import "./vidro/vidro";
-import "./vidro/bento";
-import "./vidro/moldura";
-import "./vidro/editorial";
-import "./vidro/instrumento";
-import { html as shtml, unsafeStatic } from "lit/static-html.js";
+import { html as shtml } from "lit/static-html.js";
+import { STYLE_SELECTOR, styleTag } from "./lib/styles";
 
-const STYLE_TAGS: Record<string, string> = { vidro: "pine3-vidro", bento: "pine3-bento", moldura: "pine3-moldura", editorial: "pine3-editorial", instrumento: "pine3-instrumento" };
 import type { Pine3Vidro } from "./vidro/vidro";
 import { applyBrightness, bridge, onWallpanel } from "./lib/wallpanel";
 import type { Home, Me } from "./lib/types";
@@ -89,7 +84,7 @@ export class Pine3Screen extends LitElement {
 
   // ---------- ambient face ----------
   private get vidro(): Pine3Vidro | null {
-    return this.renderRoot.querySelector("pine3-vidro, pine3-bento, pine3-moldura, pine3-editorial, pine3-instrumento");
+    return this.renderRoot.querySelector<Pine3Vidro>(STYLE_SELECTOR);
   }
 
   private activity(e?: Event): void {
@@ -223,7 +218,7 @@ export class Pine3Screen extends LitElement {
     const me = this.me!;
     if (!this.home || !this.conn) return html`<main class="center"><p class="muted">A carregar a casa…</p></main>`;
     // the styles that exist so far; the others show Vidro until they arrive
-    const tag = unsafeStatic(STYLE_TAGS[me.dashboard.style] ?? "pine3-vidro");
+    const tag = styleTag(me.dashboard.style);
     return shtml`<${tag} .home=${this.home} .entities=${this.entities} .dashboard=${me.dashboard} .conn=${this.conn}
       .screenName=${me.screen?.name ?? ""} ?ambient=${this.ambient} .wallpanel=${bridge() !== null}
       ?canEdit=${me.is_admin || me.dashboard.screen_edit !== false}></${tag}>`;

@@ -6,13 +6,18 @@ Uma app para o Home Assistant com vários painéis para a casa, e uma página le
 
 ## O que faz
 
-- **Painel no Home Assistant** (barra lateral, *Pine3 Home*): aqui emparelhas ecrãs, escolhes o painel de cada ecrã e geres os painéis: estilo, dock à esquerda ou em baixo.
+- **Painel no Home Assistant** (barra lateral, *Pine3 Home*): é o próprio painel, no estilo escolhido. O ⚙ abre as definições em ecrã inteiro, como no Pine3 View:
+  - **Aparência**, com pré-visualização ao vivo: estilo, tema e dock;
+  - **Face ambiente**;
+  - **Casa**: avisos do IPMA;
+  - **Ecrãs e painéis**: emparelhar, escolher o painel de cada ecrã, criar e renomear painéis;
+  - **Sistema**.
 - **Página para ecrãs** em `http://<home-assistant>:8123/pine3/ecra`: não carrega o frontend do Home Assistant, por isso é rápida em tablets modestos como o Samsung Galaxy Tab A7.
 - **Emparelhar sem palavra-passe**:
   1. O ecrã mostra um código de 6 algarismos e um QR.
-  2. Um administrador escreve o código no painel, ou lê o QR com o telemóvel.
+  2. Um administrador escreve o código em ⚙ → Ecrãs e painéis, ou lê o QR com o telemóvel.
   3. O ecrã recebe um token próprio, de um utilizador sem permissões de administrador que só funciona na rede local (*Pine3 Home · Ecrãs*).
-  4. Remover o ecrã no painel revoga o token.
+  4. Remover o ecrã revoga o token.
 
 ## Instalar
 

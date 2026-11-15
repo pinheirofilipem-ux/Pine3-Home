@@ -74,6 +74,8 @@ export class Pine3Vidro extends LitElement {
   @property({ type: Boolean }) canEdit = false;
   /** The ambient face: a calm clock after a few minutes without activity (decided by the screen). */
   @property({ type: Boolean }) ambient = false;
+  /** Show the ⚙ that opens the settings (the panel in Home Assistant; wall screens from phase E, with a PIN). */
+  @property({ type: Boolean }) settingsButton = false;
   /** Whether the screen runs inside the Pine3 Wallpanel app. */
   @property({ type: Boolean }) wallpanel = false;
 
@@ -304,6 +306,14 @@ export class Pine3Vidro extends LitElement {
     return this.renderRoot?.querySelector(".main") ?? null;
   }
 
+  /** The ⚙: asks the page around the dashboard to open the settings. */
+  protected renderGear(cls = "di gear") {
+    if (!this.settingsButton) return nothing;
+    return html`<button class=${cls} aria-label="Definições" title="Definições"
+      @click=${() => this.dispatchEvent(new CustomEvent("pine3-settings", { bubbles: true, composed: true }))}>
+      ${icon(ICONS.gear)}${cls.includes("di") ? html`<span class="lb">Definições</span>` : nothing}</button>`;
+  }
+
   // ---------- editing the layout ----------
   protected arranged(view: string, auto: Widget[]): Widget[] {
     const layout = this.editing === view && this.draft ? this.draft : this.dashboard.layouts?.[view];
@@ -521,6 +531,7 @@ export class Pine3Vidro extends LitElement {
           ${icon(v.icon)}<span class="lb">${v.name}</span>${badge ? html`<span class="bdg alert">${badge}</span>` : nothing}
         </button>`;
       })}
+      ${this.renderGear()}
     </nav>`;
   }
 
