@@ -414,6 +414,11 @@ export const vidroStyles = css`
   .w.on .hero {
     color: var(--on-hero);
   }
+  /* a light's own colour is for dark cards; on light ones the warm "on" ink reads better */
+  .vd.light .w.on .hero,
+  .vd.moldura .w.on .hero {
+    color: var(--on-hero) !important;
+  }
   .w.att {
     box-shadow: var(--rim), inset 0 0 0 1px rgba(255, 138, 92, 0.5);
   }

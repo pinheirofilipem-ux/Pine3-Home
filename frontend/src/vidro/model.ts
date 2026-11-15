@@ -194,3 +194,11 @@ export function addable(auto: Widget[], layout: Layout, home: Home): Widget[] {
     .filter((w): w is Widget => !!w && !present.has(w.key) && !hiddenAuto.some((h) => h.key === w.key) && !auto.some((a) => a.key === w.key && !layout.hidden.includes(a.key)));
   return [...hiddenAuto, ...devices];
 }
+
+/** "2 de 3 luzes acesas", "luz acesa", "luzes apagadas", "5 dispositivos". */
+export function roomLine(total: number, on: number, devices: number): string {
+  if (!total) return `${devices} dispositivo${devices === 1 ? "" : "s"}`;
+  if (!on) return total === 1 ? "luz apagada" : "luzes apagadas";
+  if (on === total) return total === 1 ? "luz acesa" : `${total} luzes acesas`;
+  return `${on} de ${total} luzes acesas`;
+}
