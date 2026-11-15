@@ -6,6 +6,7 @@ import "../vidro/editorial";
 import "../vidro/instrumento";
 import "../vidro/orbita";
 import "../vidro/carteira";
+import "../vidro/lente";
 import { unsafeStatic } from "lit/static-html.js";
 
 export const STYLE_TAGS: Record<string, string> = {
@@ -16,6 +17,7 @@ export const STYLE_TAGS: Record<string, string> = {
   instrumento: "pine3-instrumento",
   orbita: "pine3-orbita",
   carteira: "pine3-carteira",
+  lente: "pine3-lente",
 };
 
 /** The element for a style; the styles still to come show Vidro. */

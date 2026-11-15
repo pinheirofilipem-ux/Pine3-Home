@@ -43,7 +43,7 @@ Uma app para o Home Assistant com vários painéis para a casa, e uma página le
 | 7 | Estilo **Editorial**: página de revista, índice em palavras, a casa numa frase |
 | 8 | Estilo **Instrumento**: consola com teclas, roda do clima, faders e interruptores |
 | 9 | Estilos **Órbita** (as divisões em órbita à volta do relógio) e **Carteira** (separadores à direita) |
-| 10 | Estilo **Lente** |
+| 10 | Estilo **Lente**: afastar para ver todas as vistas e aproximar uma |
 
 ## Desenvolvimento
 
