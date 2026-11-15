@@ -185,3 +185,58 @@ async def test_card_type_and_name(hass: HomeAssistant, pine3, hass_ws_client) ->
     assert not (await result(admin, 2))["success"]
     await admin.send_json({"id": 3, "type": "pine3_home/home/settings", "types": {"not an id": "led"}})
     assert not (await result(admin, 3))["success"]
+
+
+async def _paired_screen(hass: HomeAssistant, client, admin, msg_id: int) -> str:
+    """Pair a screen and return its token."""
+    start = await (await client.post("/api/pine3_home/pair/start")).json()
+    await admin.send_json({"id": msg_id, "type": "pine3_home/screens/approve", "code": start["code"], "name": "Ecrã"})
+    assert (await result(admin, msg_id))["success"]
+    status = await (await client.post("/api/pine3_home/pair/status", json={"pair_id": start["pair_id"], "secret": start["secret"]})).json()
+    return status["token"]
+
+
+async def test_settings_pin(hass: HomeAssistant, pine3, hass_client_no_auth, hass_ws_client) -> None:
+    client = await hass_client_no_auth()
+    admin = await hass_ws_client(hass)
+    token = await _paired_screen(hass, client, admin, 1)
+    ws = await hass_ws_client(hass, access_token=token)
+
+    # no PIN yet: a screen can't open the settings
+    await ws.send_json({"id": 1, "type": "pine3_home/pin/status"})
+    assert (await result(ws, 1))["result"] == {"set": False, "elevated": False, "locked_for": 0}
+    await ws.send_json({"id": 2, "type": "pine3_home/pin/check", "pin": "1234"})
+    assert (await result(ws, 2))["error"]["code"] == "no_pin"
+    await ws.send_json({"id": 3, "type": "pine3_home/home/settings", "ipma_area": "LSB"})
+    assert (await result(ws, 3))["error"]["code"] == "unauthorized"
+    # nor set one
+    await ws.send_json({"id": 4, "type": "pine3_home/pin/set", "pin": "0000"})
+    assert (await result(ws, 4))["error"]["code"] == "unauthorized"
+
+    # the administrator sets it
+    await admin.send_json({"id": 2, "type": "pine3_home/pin/set", "pin": "4821"})
+    assert (await result(admin, 2))["result"] == {"set": True}
+    await admin.send_json({"id": 3, "type": "pine3_home/pin/set", "pin": "12"})  # 4 to 8 digits
+    assert not (await result(admin, 3))["success"]
+
+    # a wrong PIN changes nothing; the right one lets this connection change the settings
+    await ws.send_json({"id": 5, "type": "pine3_home/pin/check", "pin": "0000"})
+    assert (await result(ws, 5))["error"]["code"] == "wrong_pin"
+    await ws.send_json({"id": 6, "type": "pine3_home/pin/check", "pin": "4821"})
+    assert (await result(ws, 6))["result"] == {"minutes": 10}
+    await ws.send_json({"id": 7, "type": "pine3_home/home/settings", "ipma_area": "LSB"})
+    assert (await result(ws, 7))["success"]
+    await ws.send_json({"id": 8, "type": "pine3_home/screens"})
+    assert (await result(ws, 8))["success"]
+
+    # only this connection: another one of the same screen still needs the PIN
+    other = await hass_ws_client(hass, access_token=token)
+    await other.send_json({"id": 1, "type": "pine3_home/home/settings", "ipma_area": "PTO"})
+    assert (await result(other, 1))["error"]["code"] == "unauthorized"
+
+    # five wrong PINs in a row lock it for a while, even the right one
+    for i in range(5):
+        await other.send_json({"id": 10 + i, "type": "pine3_home/pin/check", "pin": "9999"})
+        assert (await result(other, 10 + i))["error"]["code"] == "wrong_pin"
+    await other.send_json({"id": 20, "type": "pine3_home/pin/check", "pin": "4821"})
+    assert (await result(other, 20))["error"]["code"] == "locked"

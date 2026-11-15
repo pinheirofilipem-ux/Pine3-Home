@@ -15,7 +15,7 @@ Uma app para o Home Assistant com vários painéis para a casa, e uma página le
   - **Ecrãs e painéis**: emparelhar, escolher o painel de cada ecrã, criar e renomear painéis;
   - **Sistema**.
 - **O tipo de cada cartão** (luz de teto, candeeiro, fita LED, spot, lâmpada, TV, Apple TV, HomePod…): adivinhado pelo nome e pelo modelo, como no Pine3 View, e corrigível na folha do próprio cartão ("Este cartão": tipo, nome, esconder) ou em Entidades. O desenho do cartão segue o tipo.
-- **Página para ecrãs** em `http://<home-assistant>:8123/pine3/ecra`: não carrega o frontend do Home Assistant, por isso é rápida em tablets modestos como o Samsung Galaxy Tab A7.
+- **Página para ecrãs** em `http://<home-assistant>:8123/pine3/ecra`: não carrega o frontend do Home Assistant, por isso é rápida em tablets modestos como o Samsung Galaxy Tab A7. Também tem o ⚙, que pede o **PIN das definições** (definido em ⚙ → Sistema, no Home Assistant) e depois abre as mesmas definições, durante 10 minutos.
 - **Emparelhar sem palavra-passe**:
   1. O ecrã mostra um código de 6 algarismos e um QR.
   2. Um administrador escreve o código em ⚙ → Ecrãs e painéis, ou lê o QR com o telemóvel.

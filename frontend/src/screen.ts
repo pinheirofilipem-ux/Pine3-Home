@@ -18,7 +18,8 @@ import { STYLE_SELECTOR, styleTag } from "./lib/styles";
 
 import type { Pine3Vidro } from "./vidro/vidro";
 import { applyBrightness, bridge, onWallpanel } from "./lib/wallpanel";
-import type { Home, Me } from "./lib/types";
+import type { Dashboard, Home, Me } from "./lib/types";
+import "./settings";
 
 type Phase = "starting" | "pairing" | "connecting" | "ready" | "error";
 const POLL_MS = 2000;
@@ -39,6 +40,15 @@ export class Pine3Screen extends LitElement {
   private clockTimer?: number;
   private unsubs: Array<() => void> = [];
   @state() private ambient = false;
+  /** The settings: "pin" while asking for the PIN, "open" once it was right. */
+  @state() private settings: "closed" | "pin" | "open" = "closed";
+  @state() private pin = "";
+  @state() private pinError = "";
+  @state() private pinBusy = false;
+  @state() private dashboards: Dashboard[] = [];
+  @state() private settingsDash = "";
+  /** Until when this connection may change the settings (the PIN was right). */
+  @state() private elevatedUntil = 0;
   private lastActivity = Date.now();
   private idleTimer?: number;
   private offWallpanel?: () => void;
@@ -59,6 +69,12 @@ export class Pine3Screen extends LitElement {
       }
       this.activity();
     });
+    this.addEventListener("pine3-settings", () => void this.askSettings());
+    // the PIN can also be typed on a keyboard (a PC)
+    window.addEventListener("keydown", this.onPinKey);
+    this.addEventListener("pine3-settings-close", () => (this.settings = "closed"));
+    this.addEventListener("pine3-dashboards", (e) => this.onDashboards((e as CustomEvent<Dashboard[]>).detail));
+    this.addEventListener("pine3-dashboard-select", (e) => (this.settingsDash = (e as CustomEvent<string>).detail));
     const token = storedToken();
     if (token) void this.connect(token);
     else void this.beginPairing();
@@ -70,6 +86,7 @@ export class Pine3Screen extends LitElement {
     clearInterval(this.idleTimer);
     window.removeEventListener("pointerdown", this.onActivity, true);
     window.removeEventListener("keydown", this.onActivity, true);
+    window.removeEventListener("keydown", this.onPinKey);
     this.offWallpanel?.();
     clearTimeout(this.pollTimer);
     this.teardown();
@@ -99,7 +116,7 @@ export class Pine3Screen extends LitElement {
   }
 
   private checkIdle(): void {
-    if (this.phase !== "ready" || this.ambient || !this.me) return;
+    if (this.phase !== "ready" || this.ambient || !this.me || this.settings !== "closed") return;
     const after = this.me.dashboard.ambient_after ?? 2;
     if (!after || this.vidro?.busy) return;
     if (Date.now() - this.lastActivity > after * 60_000) {
@@ -214,14 +231,100 @@ export class Pine3Screen extends LitElement {
     </main>`;
   }
 
+  // ---------- the settings, behind the PIN ----------
+  /** The ⚙: straight to the settings if this connection already typed the PIN, otherwise ask for it. */
+  private async askSettings(): Promise<void> {
+    if (!this.conn) return;
+    this.pin = "";
+    this.pinError = "";
+    try {
+      const st = await this.conn.sendMessagePromise<{ set: boolean; elevated: boolean; locked_for: number }>({ type: "pine3_home/pin/status" });
+      if (st.elevated) {
+        this.elevatedUntil = Math.max(this.elevatedUntil, Date.now() + 60_000);
+        return this.openSettings();
+      }
+      if (!st.set) this.pinError = "Ainda não há PIN. Define-o no Home Assistant: Pine3 Home → ⚙ → Sistema.";
+      else if (st.locked_for) this.pinError = `Demasiadas tentativas. Tenta de novo daqui a ${Math.ceil(st.locked_for / 60)} min.`;
+    } catch {
+      this.pinError = "Sem ligação ao Home Assistant.";
+    }
+    this.settings = "pin";
+  }
+
+  private async checkPin(): Promise<void> {
+    if (!this.conn || this.pin.length < 4 || this.pinBusy) return;
+    this.pinBusy = true;
+    try {
+      const r = await this.conn.sendMessagePromise<{ minutes: number }>({ type: "pine3_home/pin/check", pin: this.pin });
+      this.elevatedUntil = Date.now() + r.minutes * 60_000;
+      await this.openSettings();
+    } catch (err) {
+      this.pinError = (err as { message?: string }).message ?? "PIN errado.";
+      this.pin = "";
+    } finally {
+      this.pinBusy = false;
+    }
+  }
+
+  private async openSettings(): Promise<void> {
+    const d = await this.conn!.sendMessagePromise<{ dashboards: Dashboard[] }>({ type: "pine3_home/dashboards" });
+    this.dashboards = d.dashboards;
+    this.settingsDash = this.me!.dashboard.id;
+    this.settings = "open";
+  }
+
+  private onDashboards(list: Dashboard[]): void {
+    this.dashboards = list;
+    // the dashboard this screen shows changes at once
+    const mine = list.find((d) => d.id === this.me?.dashboard.id);
+    if (mine && this.me) this.me = { ...this.me, dashboard: mine };
+  }
+
+  private onPinKey = (e: KeyboardEvent) => {
+    if (this.settings !== "pin") return;
+    if (/^[0-9]$/.test(e.key)) this.key(e.key);
+    else if (e.key === "Backspace") this.key("del");
+    else if (e.key === "Enter") this.key("ok");
+    else if (e.key === "Escape") this.settings = "closed";
+    else return;
+    e.preventDefault();
+  };
+
+  private key(k: string): void {
+    this.pinError = "";
+    if (k === "del") this.pin = this.pin.slice(0, -1);
+    else if (k === "ok") void this.checkPin();
+    else if (this.pin.length < 8) this.pin += k;
+  }
+
+  private renderPin() {
+    const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "del", "0", "ok"];
+    return html`<div class="pinwrap">
+      <div class="pinbox pane" role="dialog" aria-label="PIN das definições">
+        <span class="eyebrow muted">Definições</span>
+        <h2>Escreve o PIN</h2>
+        <div class="dots" aria-live="polite">${[0, 1, 2, 3, 4, 5, 6, 7].slice(0, Math.max(4, this.pin.length)).map((i) => html`<i class=${i < this.pin.length ? "on" : ""}></i>`)}</div>
+        <p class="perr" role="alert">${this.pinError}</p>
+        <div class="pad">${keys.map((k) => html`<button class=${k === "ok" ? "primary" : ""} ?disabled=${k === "ok" && (this.pin.length < 4 || this.pinBusy)}
+          aria-label=${k === "del" ? "Apagar" : k === "ok" ? "Entrar" : k} @click=${() => this.key(k)}>${k === "del" ? "⌫" : k === "ok" ? "OK" : k}</button>`)}</div>
+        <button class="cancel" @click=${() => (this.settings = "closed")}>Cancelar</button>
+      </div>
+    </div>`;
+  }
+
   private renderReady() {
     const me = this.me!;
     if (!this.home || !this.conn) return html`<main class="center"><p class="muted">A carregar a casa…</p></main>`;
     // the styles that exist so far; the others show Vidro until they arrive
     const tag = styleTag(me.dashboard.style);
-    return shtml`<${tag} .home=${this.home} .entities=${this.entities} .dashboard=${me.dashboard} .conn=${this.conn}
-      .screenName=${me.screen?.name ?? ""} ?ambient=${this.ambient} .wallpanel=${bridge() !== null}
-      ?canEdit=${me.is_admin || me.dashboard.screen_edit !== false}></${tag}>`;
+    return html`${shtml`<${tag} .home=${this.home} .entities=${this.entities} .dashboard=${me.dashboard} .conn=${this.conn}
+      .screenName=${me.screen?.name ?? ""} ?ambient=${this.ambient} .wallpanel=${bridge() !== null} settingsButton ?cardSettings=${this.elevatedUntil > this.now.getTime()}
+      ?canEdit=${me.is_admin || me.dashboard.screen_edit !== false}></${tag}>`}
+      ${this.settings === "pin" ? this.renderPin() : nothing}
+      ${this.settings === "open"
+        ? html`<pine3-settings .conn=${this.conn} .home=${this.home} .entities=${this.entities} .dashboards=${this.dashboards}
+            .dashboardId=${this.settingsDash} .version=${me.version}></pine3-settings>`
+        : nothing}`;
   }
 
 
@@ -246,6 +349,71 @@ export class Pine3Screen extends LitElement {
         display: block;
         min-height: 100vh;
         background: var(--p3-bg);
+      }
+      .pinwrap {
+        position: fixed;
+        inset: 0;
+        z-index: 30;
+        display: grid;
+        place-items: center;
+        background: rgba(10, 12, 14, 0.7);
+      }
+      .pinbox {
+        width: min(360px, calc(100vw - 32px));
+        padding: 28px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        background: #1b1e22;
+      }
+      .pinbox h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+      }
+      .eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-size: 0.75rem;
+      }
+      .dots {
+        display: flex;
+        gap: 12px;
+        min-height: 16px;
+      }
+      .dots i {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 2px solid var(--p3-muted);
+      }
+      .dots i.on {
+        background: var(--p3-text);
+        border-color: var(--p3-text);
+      }
+      .perr {
+        margin: 0;
+        min-height: 1.3em;
+        color: var(--p3-bad);
+        text-align: center;
+        font-size: 0.9rem;
+      }
+      .pad {
+        display: grid;
+        grid-template-columns: repeat(3, 72px);
+        gap: 12px;
+      }
+      .pad button {
+        height: 64px;
+        border-radius: 20px;
+        font-size: 1.4rem;
+        padding: 0;
+      }
+      .cancel {
+        background: none;
+        border: 0;
+        color: var(--p3-muted);
       }
       main {
         min-height: 100vh;

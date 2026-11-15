@@ -123,7 +123,7 @@ export class Pine3HomePanel extends LitElement {
     const tag = styleTag(dash.style);
     return html`
       ${shtml`<${tag} .home=${this.home} .entities=${this.hass.states} .dashboard=${dash} .conn=${this.hass.connection}
-        ?settingsButton=${this.admin} ?canEdit=${this.admin}></${tag}>`}
+        ?settingsButton=${this.admin} ?cardSettings=${this.admin} ?canEdit=${this.admin}></${tag}>`}
       ${this.narrow
         ? html`<button class="menu" aria-label="Menu do Home Assistant"
             @click=${() => this.dispatchEvent(new Event("hass-toggle-menu", { bubbles: true, composed: true }))}>

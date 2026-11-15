@@ -18,12 +18,14 @@ from homeassistant.helpers.storage import Store
 from .const import DOMAIN, EVENT_UPDATED, STORAGE_KEY, VERSION
 from .discovery import build_home
 from .pairing import PairingError, PairingManager
+from .pin import PIN_COMMANDS, may_change_settings, require_admin_or_pin
 
 STYLES = ["vidro", "bento", "moldura", "editorial", "instrumento", "orbita", "carteira", "lente"]
 DOCK_PLACEMENTS = ["left", "bottom"]
 DEFAULT_DASHBOARD = {"id": "casa", "name": "Casa", "style": "vidro", "dock": "left", "theme": "grafite"}
 DEFAULT_DATA: dict[str, Any] = {
     "home": {"hidden": [], "hidden_rooms": [], "room_order": [], "shown": [], "room_icons": {}, "types": {}, "names": {}, "ipma_area": None},
+    "pin": None,
     "dashboards": [DEFAULT_DASHBOARD],
     "screens": [],
     "screen_user_id": None,
@@ -81,7 +83,7 @@ async def async_setup_api(hass: HomeAssistant) -> None:
     hass.data[DOMAIN] = {"store": store, "data": data, "save": _save, "unsubs": [], "pairing": PairingManager(hass, data, _save)}
 
     for cmd in (ws_home, ws_subscribe, ws_home_settings, ws_ipma_warnings, ws_me, ws_dashboards, ws_dashboard_save, ws_dashboard_remove, ws_dashboard_layout,
-                ws_screens, ws_pending, ws_approve, ws_screen_update, ws_screen_remove):
+                ws_screens, ws_pending, ws_approve, ws_screen_update, ws_screen_remove, *PIN_COMMANDS):
         websocket_api.async_register_command(hass, cmd)
 
     pending: list = []
@@ -144,7 +146,7 @@ def ws_subscribe(hass: HomeAssistant, connection: websocket_api.ActiveConnection
     vol.Optional("types"): {ENTITY_ID: vol.In(DEVICE_TYPES)},
     vol.Optional("names"): {ENTITY_ID: vol.All(str, vol.Length(min=1, max=40))},
 })
-@websocket_api.require_admin
+@require_admin_or_pin
 @websocket_api.async_response
 async def ws_home_settings(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
     """Settings of the house shared by every dashboard: the IPMA warning area, the devices hidden and the extra
@@ -183,7 +185,7 @@ def ws_dashboards(hass: HomeAssistant, connection: websocket_api.ActiveConnectio
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/dashboards/save", vol.Required("dashboard"): DASHBOARD})
-@websocket_api.require_admin
+@require_admin_or_pin
 @websocket_api.async_response
 async def ws_dashboard_save(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
     dash = msg["dashboard"]
@@ -213,7 +215,7 @@ async def ws_dashboard_layout(hass: HomeAssistant, connection: websocket_api.Act
     if dash is None:
         connection.send_error(msg["id"], "unknown_dashboard", "Esse painel não existe.")
         return
-    if not connection.user.is_admin:
+    if not may_change_settings(hass, connection):
         screen = _pairing(hass).screen_for_token(connection.refresh_token_id)
         if screen is None or screen["dashboard"] != dash["id"] or dash.get("screen_edit", True) is False:
             connection.send_error(msg["id"], websocket_api.ERR_UNAUTHORIZED, "Este ecrã não pode editar esse painel.")
@@ -229,7 +231,7 @@ async def ws_dashboard_layout(hass: HomeAssistant, connection: websocket_api.Act
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/dashboards/remove", vol.Required("dashboard_id"): SLUG})
-@websocket_api.require_admin
+@require_admin_or_pin
 @websocket_api.async_response
 async def ws_dashboard_remove(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
     data = _data(hass)
@@ -248,14 +250,14 @@ async def ws_dashboard_remove(hass: HomeAssistant, connection: websocket_api.Act
 
 # ---------- screens ----------
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/screens"})
-@websocket_api.require_admin
+@require_admin_or_pin
 @callback
 def ws_screens(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
     connection.send_result(msg["id"], {"screens": _pairing(hass).screens()})
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/screens/pending"})
-@websocket_api.require_admin
+@require_admin_or_pin
 @callback
 def ws_pending(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
     connection.send_result(msg["id"], {"pending": _pairing(hass).pending_codes()})
@@ -267,7 +269,7 @@ def ws_pending(hass: HomeAssistant, connection: websocket_api.ActiveConnection, 
     vol.Required("name"): vol.All(str, vol.Length(min=1, max=40)),
     vol.Optional("dashboard"): SLUG,
 })
-@websocket_api.require_admin
+@require_admin_or_pin
 @websocket_api.async_response
 async def ws_approve(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
     dashboards = _data(hass)["dashboards"]
@@ -289,7 +291,7 @@ async def ws_approve(hass: HomeAssistant, connection: websocket_api.ActiveConnec
     vol.Optional("name"): vol.All(str, vol.Length(min=1, max=40)),
     vol.Optional("dashboard"): SLUG,
 })
-@websocket_api.require_admin
+@require_admin_or_pin
 @websocket_api.async_response
 async def ws_screen_update(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
     if "dashboard" in msg and not any(d["id"] == msg["dashboard"] for d in _data(hass)["dashboards"]):
@@ -305,7 +307,7 @@ async def ws_screen_update(hass: HomeAssistant, connection: websocket_api.Active
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/screens/remove", vol.Required("screen_id"): str})
-@websocket_api.require_admin
+@require_admin_or_pin
 @websocket_api.async_response
 async def ws_screen_remove(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
     try:
