@@ -33,6 +33,7 @@ export class Pine3Screen extends LitElement {
   @state() private phase: Phase = "starting";
   @state() private pair?: PairStart;
   @state() private error = "";
+  @state() private errorDetail = "";
   @state() private me?: Me;
   @state() private home?: Home;
   @state() private entities: HassEntities = {};
@@ -161,14 +162,18 @@ export class Pine3Screen extends LitElement {
       this.me = await conn.sendMessagePromise<Me>({ type: "pine3_home/me" });
       this.home = await conn.sendMessagePromise<Home>({ type: "pine3_home/home" });
       this.unsubs.push(subscribeEntities(conn, (e) => (this.entities = e)));
+      // A fresh home model arrives whenever the house or the dashboards change. The screen's dashboard may have
+      // changed in the panel too, so ask again who this screen is. (Not subscribe_events: Home Assistant only lets
+      // administrators subscribe to the integration's own event, and the screen's user is not one.)
       this.unsubs.push(
-        await conn.subscribeMessage<Home>((h) => (this.home = h), { type: "pine3_home/subscribe" }),
-      );
-      // a screen's dashboard can change in the panel: ask again on every update
-      this.unsubs.push(
-        await conn.subscribeEvents(async () => {
-          this.me = await conn.sendMessagePromise<Me>({ type: "pine3_home/me" });
-        }, "pine3_home_updated"),
+        await conn.subscribeMessage<Home>(async (h) => {
+          this.home = h;
+          try {
+            this.me = await conn.sendMessagePromise<Me>({ type: "pine3_home/me" });
+          } catch {
+            /* reconnecting: "ready" asks again */
+          }
+        }, { type: "pine3_home/subscribe" }),
       );
       conn.addEventListener("ready", async () => {
         this.me = await conn.sendMessagePromise<Me>({ type: "pine3_home/me" });
@@ -183,6 +188,8 @@ export class Pine3Screen extends LitElement {
       }
       this.phase = "error";
       this.error = "Sem ligação ao Home Assistant. A tentar de novo…";
+      this.errorDetail = describe(err);
+      console.warn("Pine3 Home: connect", err);
       this.pollTimer = window.setTimeout(() => this.connect(token), 5000);
     }
   }
@@ -230,7 +237,7 @@ export class Pine3Screen extends LitElement {
       case "ready":
         return this.me ? this.renderReady() : nothing;
       case "error":
-        return html`<main class="center"><p class="muted">${this.error}</p></main>`;
+        return html`<main class="center"><div class="errbox"><p class="muted">${this.error}</p>${this.errorDetail ? html`<p class="detail">${this.errorDetail}</p>` : nothing}</div></main>`;
       default:
         return html`<main class="center"><p class="muted">A ligar…</p></main>`;
     }
@@ -295,6 +302,14 @@ export class Pine3Screen extends LitElement {
         height: 100%;
         display: block;
       }
+      .errbox {
+        text-align: center;
+      }
+      .detail {
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-size: 0.8rem;
+        color: rgba(238, 241, 244, 0.4);
+      }
       .small {
         font-size: 0.85rem;
       }
@@ -309,4 +324,14 @@ declare global {
   interface HTMLElementTagNameMap {
     "pine3-screen": Pine3Screen;
   }
+}
+
+/** A short description of a connection error, shown small under the message (helps when reporting a problem). */
+function describe(err: unknown): string {
+  if (typeof err === "number") return `erro ${err}`;
+  if (err && typeof err === "object") {
+    const e = err as { code?: unknown; message?: unknown };
+    return [e.code, e.message].filter(Boolean).join(": ");
+  }
+  return String(err ?? "");
 }
