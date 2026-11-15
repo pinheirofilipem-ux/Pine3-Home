@@ -86,7 +86,7 @@ export const vidroStyles = css`
   .dock .rooms {
     display: flex;
     align-items: center;
-    gap: calc(var(--u) * 0.5);
+    gap: calc(var(--u) * 0.4);
     overflow: auto;
     scrollbar-width: none;
   }
@@ -134,8 +134,8 @@ export const vidroStyles = css`
   .di {
     position: relative;
     flex: none;
-    width: calc(var(--u) * 5.8);
-    height: calc(var(--u) * 5.8);
+    width: calc(var(--u) * 5.4);
+    height: calc(var(--u) * 5.2);
     border-radius: calc(var(--u) * 1.7);
     display: grid;
     place-items: center;
@@ -532,6 +532,100 @@ export const vidroStyles = css`
     height: 45%;
     z-index: 1;
     pointer-events: none;
+  }
+  .ipma {
+    position: relative;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: calc(var(--u) * 0.6);
+    align-self: flex-start;
+    margin-top: calc(var(--u) * 0.6);
+    padding: calc(var(--u) * 0.3) calc(var(--u) * 0.9);
+    border-radius: 99px;
+    font-size: calc(var(--u) * 1);
+    font-weight: 600;
+    --lv: 255, 184, 77;
+    color: rgb(var(--lv));
+    background: rgba(var(--lv), 0.12);
+    border: 1px solid rgba(var(--lv), 0.3);
+  }
+  .ipma.orange,
+  .warn.orange {
+    --lv: 255, 138, 76;
+  }
+  .ipma.red,
+  .warn.red {
+    --lv: 255, 92, 92;
+  }
+  .ipma i {
+    width: calc(var(--u) * 0.8);
+    height: calc(var(--u) * 0.8);
+    border-radius: 50%;
+    background: rgb(var(--lv));
+  }
+  .light .ipma {
+    color: #8a5a12;
+  }
+  .warn {
+    --lv: 255, 184, 77;
+    border-left: calc(var(--u) * 0.35) solid rgb(var(--lv));
+    background: rgba(var(--lv), 0.08);
+    border-radius: calc(var(--u) * 1);
+    padding: calc(var(--u) * 1) calc(var(--u) * 1.2);
+    font-size: calc(var(--u) * 1.1);
+  }
+  .warn b {
+    display: block;
+  }
+  .warn span {
+    color: var(--muted);
+  }
+  .warn p {
+    margin: calc(var(--u) * 0.5) 0 0;
+    line-height: 1.35;
+  }
+  .hint {
+    color: var(--muted);
+    font-size: calc(var(--u) * 1.05);
+  }
+  .go {
+    position: relative;
+    z-index: 2;
+    margin-top: auto;
+    font-size: calc(var(--u) * 1.05);
+    color: var(--muted);
+  }
+  .w.on .go {
+    color: var(--on-hero);
+  }
+  .cam {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+  }
+  .w:has(.cam) .nm {
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  }
+  .w:has(.cam)::after {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 40%;
+    background: linear-gradient(rgba(0, 0, 0, 0.45), transparent);
+    z-index: 1;
+  }
+  .camlg {
+    width: 100%;
+    border-radius: calc(var(--u) * 1.4);
+  }
+  .di .bdg.alert {
+    background: #ff8a5c;
+    color: #2a0f04;
   }
   .spin {
     animation: spin 1.2s linear infinite;

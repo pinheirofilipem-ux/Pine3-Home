@@ -73,7 +73,19 @@ export function plugArt(on: boolean): SVGTemplateResult {
     <circle cx="48" cy="24" r="1.4" fill=${on ? "#5be3a0" : "#5d646e"}/>`);
 }
 
-/** A soft line chart for a sensor (shape only: history comes in a later phase). */
-export function spark(c: string): SVGTemplateResult {
-  return svg`<svg class="spark" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><path d="M0 30 C10 28 15 20 25 22 S40 30 50 24 65 10 75 14 90 22 100 18 V40 H0Z" fill=${c} opacity=".12"/><path d="M0 30 C10 28 15 20 25 22 S40 30 50 24 65 10 75 14 90 22 100 18" fill="none" stroke=${c} stroke-width="1.2" vector-effect="non-scaling-stroke" opacity=".8"/></svg>`;
+/** A soft line chart for a sensor: the last 24 h when the history is known, a flat line until then. */
+export function spark(c: string, values?: number[]): SVGTemplateResult {
+  let line = "M0 26 L100 26";
+  if (values && values.length > 1) {
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const span = max - min || 1;
+    const pts = values.map((v, i) => [(i / (values.length - 1)) * 100, 34 - ((v - min) / span) * 26]);
+    line = pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
+  }
+  return svg`<svg class="spark" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><path d=${`${line} V40 H0Z`} fill=${c} opacity=".12"/><path d=${line} fill="none" stroke=${c} stroke-width="1.4" stroke-linejoin="round" vector-effect="non-scaling-stroke" opacity=".85"/></svg>`;
+}
+
+export function sceneArt(): SVGTemplateResult {
+  return frame(svg`<circle cx="42" cy="34" r="14" fill="#b49cff" opacity=".18"/><path d="M42 22l2.6 7.4L52 32l-7.4 2.6L42 42l-2.6-7.4L32 32l7.4-2.6z" fill="#d9ccff"/><path d="M52 18l1 3 3 1-3 1-1 3-1-3-3-1 3-1z" fill="#ffe2b0"/>`);
 }
