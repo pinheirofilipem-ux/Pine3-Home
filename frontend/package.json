@@ -1,0 +1,20 @@
+{
+  "name": "pine3-home-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "home-assistant-js-websocket": "9.4.0",
+    "lit": "3.2.1",
+    "qrcode-generator": "1.4.4"
+  },
+  "devDependencies": {
+    "typescript": "5.6.3",
+    "vite": "5.4.11"
+  }
+}

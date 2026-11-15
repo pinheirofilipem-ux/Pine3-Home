@@ -1,0 +1,298 @@
+// The light page for wall screens (/pine3/ecra): pairs with a code, then talks to Home Assistant with its own token.
+import { LitElement, html, css, nothing } from "lit";
+import { customElement, state } from "lit/decorators.js";
+import { unsafeSVG } from "lit/directives/unsafe-svg.js";
+import qrcode from "qrcode-generator";
+import {
+  createConnection,
+  createLongLivedTokenAuth,
+  subscribeEntities,
+  ERR_INVALID_AUTH,
+  type Connection,
+  type HassEntities,
+} from "home-assistant-js-websocket";
+import { base } from "./lib/base";
+import { pairStatus, startPairing, storeToken, storedToken, type PairStart } from "./lib/pairing";
+import { STYLE_NAMES } from "./lib/types";
+import type { Home, Me } from "./lib/types";
+
+type Phase = "starting" | "pairing" | "connecting" | "ready" | "error";
+const POLL_MS = 2000;
+const PANEL_PATH = "/pine3-home";
+
+@customElement("pine3-screen")
+export class Pine3Screen extends LitElement {
+  @state() private phase: Phase = "starting";
+  @state() private pair?: PairStart;
+  @state() private error = "";
+  @state() private me?: Me;
+  @state() private home?: Home;
+  @state() private entities: HassEntities = {};
+  @state() private now = new Date();
+  private conn?: Connection;
+  private pollTimer?: number;
+  private clockTimer?: number;
+  private unsubs: Array<() => void> = [];
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    this.clockTimer = window.setInterval(() => (this.now = new Date()), 15_000);
+    const token = storedToken();
+    if (token) void this.connect(token);
+    else void this.beginPairing();
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    clearInterval(this.clockTimer);
+    clearTimeout(this.pollTimer);
+    this.teardown();
+  }
+
+  private teardown(): void {
+    this.unsubs.forEach((u) => u());
+    this.unsubs = [];
+    this.conn?.close();
+    this.conn = undefined;
+  }
+
+  // ---------- pairing ----------
+  private async beginPairing(): Promise<void> {
+    clearTimeout(this.pollTimer);
+    this.phase = "pairing";
+    this.pair = undefined;
+    try {
+      this.pair = await startPairing();
+      this.poll();
+    } catch (err) {
+      this.error = (err as Error).message === "too_many" ? "Há demasiados códigos à espera. Tenta daqui a pouco." : "Não foi possível pedir um código.";
+      this.pollTimer = window.setTimeout(() => this.beginPairing(), 10_000);
+    }
+  }
+
+  private poll(): void {
+    this.pollTimer = window.setTimeout(async () => {
+      if (!this.pair) return;
+      try {
+        const s = await pairStatus(this.pair);
+        if (s.status === "approved") {
+          storeToken(s.token);
+          void this.connect(s.token);
+          return;
+        }
+        if (s.status === "expired") {
+          void this.beginPairing();
+          return;
+        }
+      } catch {
+        /* Home Assistant restarting: keep asking */
+      }
+      this.poll();
+    }, POLL_MS);
+  }
+
+  // ---------- connection ----------
+  private async connect(token: string): Promise<void> {
+    this.phase = "connecting";
+    this.teardown();
+    try {
+      const conn = await createConnection({ auth: createLongLivedTokenAuth(location.origin, token) });
+      this.conn = conn;
+      this.me = await conn.sendMessagePromise<Me>({ type: "pine3_home/me" });
+      this.home = await conn.sendMessagePromise<Home>({ type: "pine3_home/home" });
+      this.unsubs.push(subscribeEntities(conn, (e) => (this.entities = e)));
+      this.unsubs.push(
+        await conn.subscribeMessage<Home>((h) => (this.home = h), { type: "pine3_home/subscribe" }),
+      );
+      // a screen's dashboard can change in the panel: ask again on every update
+      this.unsubs.push(
+        await conn.subscribeEvents(async () => {
+          this.me = await conn.sendMessagePromise<Me>({ type: "pine3_home/me" });
+        }, "pine3_home_updated"),
+      );
+      conn.addEventListener("ready", async () => {
+        this.me = await conn.sendMessagePromise<Me>({ type: "pine3_home/me" });
+      });
+      this.phase = "ready";
+    } catch (err) {
+      if (err === ERR_INVALID_AUTH) {
+        // the screen was removed in the panel (token revoked): pair again
+        storeToken(null);
+        void this.beginPairing();
+        return;
+      }
+      this.phase = "error";
+      this.error = "Sem ligação ao Home Assistant. A tentar de novo…";
+      this.pollTimer = window.setTimeout(() => this.connect(token), 5000);
+    }
+  }
+
+  // ---------- render ----------
+  private qr(code: string) {
+    const q = qrcode(0, "M");
+    q.addData(`${location.origin}${PANEL_PATH}?code=${code}`);
+    q.make();
+    return unsafeSVG(q.createSvgTag({ cellSize: 6, margin: 2, scalable: true }));
+  }
+
+  private renderPairing() {
+    const code = this.pair?.code;
+    return html`<main class="center">
+      <div class="pane pairing">
+        <div class="text">
+          <span class="muted eyebrow">Pine3 Home</span>
+          <h1>Emparelhar este ecrã</h1>
+          <p class="muted">No Home Assistant, abre <strong>Pine3 Home</strong> e escreve este código, ou lê o QR com o telemóvel.</p>
+          <div class="code" aria-live="polite">${code ? `${code.slice(0, 3)} ${code.slice(3)}` : "··· ···"}</div>
+          ${this.error ? html`<p class="bad">${this.error}</p>` : html`<p class="muted small">O código muda a cada 10 minutos.</p>`}
+        </div>
+        ${code ? html`<div class="qr">${this.qr(code)}</div>` : nothing}
+      </div>
+    </main>`;
+  }
+
+  private renderReady() {
+    const me = this.me!;
+    const rooms = (this.home?.rooms ?? []).filter((r) => !r.hidden);
+    const on = (ids: string[]) => ids.filter((id) => this.entities[id]?.state === "on").length;
+    const time = this.now.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
+    const date = this.now.toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" });
+    return html`<main class="home dock-${me.dashboard.dock}">
+      <header>
+        <div>
+          <div class="clock">${time}</div>
+          <div class="muted">${date}</div>
+        </div>
+        <div class="who muted">
+          ${me.screen?.name ?? "Ecrã"} · ${me.dashboard.name} · ${STYLE_NAMES[me.dashboard.style] ?? me.dashboard.style}
+        </div>
+      </header>
+      <section class="rooms">
+        ${rooms.map((r) => {
+          const lights = r.devices.map((d) => d.id).filter((id) => id.startsWith("light."));
+          return html`<div class="pane room">
+            <strong>${r.name}</strong>
+            <span class="muted">${r.devices.length} dispositivos</span>
+            <span class="muted">${lights.length ? `${on(lights)}/${lights.length} luzes acesas` : ""}${r.temperature && this.entities[r.temperature] ? ` · ${this.entities[r.temperature].state}°` : ""}</span>
+          </div>`;
+        })}
+      </section>
+      <p class="muted small foot">Fase 0 · o estilo ${STYLE_NAMES[me.dashboard.style]} chega na próxima versão · v${me.version}</p>
+    </main>`;
+  }
+
+  render() {
+    switch (this.phase) {
+      case "pairing":
+        return this.renderPairing();
+      case "ready":
+        return this.me ? this.renderReady() : nothing;
+      case "error":
+        return html`<main class="center"><p class="muted">${this.error}</p></main>`;
+      default:
+        return html`<main class="center"><p class="muted">A ligar…</p></main>`;
+    }
+  }
+
+  static styles = [
+    base,
+    css`
+      :host {
+        display: block;
+        min-height: 100vh;
+        background: var(--p3-bg);
+      }
+      main {
+        min-height: 100vh;
+        box-sizing: border-box;
+        padding: 24px;
+      }
+      .center {
+        display: grid;
+        place-items: center;
+      }
+      .pairing {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 40px;
+        padding: 40px 48px;
+        max-width: 860px;
+      }
+      .pairing .text {
+        flex: 1;
+        min-width: 260px;
+      }
+      .eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-size: 0.75rem;
+      }
+      h1 {
+        margin: 6px 0 10px;
+        font-size: 2rem;
+        letter-spacing: -0.02em;
+      }
+      .code {
+        font-size: clamp(3rem, 9vw, 5.5rem);
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        font-variant-numeric: tabular-nums;
+        margin: 18px 0 8px;
+      }
+      .qr {
+        width: 220px;
+        height: 220px;
+        background: #fff;
+        border-radius: 18px;
+        padding: 10px;
+        box-sizing: border-box;
+      }
+      .qr svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .small {
+        font-size: 0.85rem;
+      }
+      .bad {
+        color: var(--p3-bad);
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+      .clock {
+        font-size: 3.5rem;
+        font-weight: 300;
+        letter-spacing: -0.03em;
+        font-variant-numeric: tabular-nums;
+      }
+      .rooms {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 14px;
+      }
+      .room {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 16px 18px;
+        min-height: 96px;
+      }
+      .foot {
+        margin-top: 24px;
+      }
+    `,
+  ];
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "pine3-screen": Pine3Screen;
+  }
+}

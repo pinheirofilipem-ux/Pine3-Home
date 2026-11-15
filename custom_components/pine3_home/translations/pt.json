@@ -1,0 +1,6 @@
+{
+  "config": {
+    "step": {"user": {"title": "Pine3 Home", "description": "Adicionar o Pine3 Home: painéis para cada ecrã da casa e uma página leve para os tablets de parede."}},
+    "abort": {"single_instance_allowed": "O Pine3 Home já está configurado."}
+  }
+}
