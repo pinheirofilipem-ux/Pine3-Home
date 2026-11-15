@@ -14,7 +14,9 @@ from custom_components.pine3_home.const import DOMAIN, SCREEN_USER_NAME, VERSION
 
 @pytest.fixture
 async def pine3(hass: HomeAssistant):
-    assert await async_setup_component(hass, "http", {})
+    # the integration's dependencies, set up before the test opens HTTP or websocket clients
+    for dep in ("http", "websocket_api"):
+        assert await async_setup_component(hass, dep, {})
     entry = MockConfigEntry(domain=DOMAIN)
     entry.add_to_hass(hass)
     with patch("homeassistant.components.panel_custom.async_register_panel", new=AsyncMock()) as reg:
