@@ -22,7 +22,7 @@ STYLES = ["vidro", "bento", "moldura", "editorial", "instrumento", "orbita", "ca
 DOCK_PLACEMENTS = ["left", "bottom"]
 DEFAULT_DASHBOARD = {"id": "casa", "name": "Casa", "style": "vidro", "dock": "left", "theme": "grafite"}
 DEFAULT_DATA: dict[str, Any] = {
-    "home": {"hidden": [], "hidden_rooms": [], "room_order": [], "shown": []},
+    "home": {"hidden": [], "hidden_rooms": [], "room_order": [], "shown": [], "ipma_area": None},
     "dashboards": [DEFAULT_DASHBOARD],
     "screens": [],
     "screen_user_id": None,
@@ -61,7 +61,7 @@ async def async_setup_api(hass: HomeAssistant) -> None:
 
     hass.data[DOMAIN] = {"store": store, "data": data, "save": _save, "unsubs": [], "pairing": PairingManager(hass, data, _save)}
 
-    for cmd in (ws_home, ws_subscribe, ws_ipma_warnings, ws_me, ws_dashboards, ws_dashboard_save, ws_dashboard_remove,
+    for cmd in (ws_home, ws_subscribe, ws_home_settings, ws_ipma_warnings, ws_me, ws_dashboards, ws_dashboard_save, ws_dashboard_remove,
                 ws_screens, ws_pending, ws_approve, ws_screen_update, ws_screen_remove):
         websocket_api.async_register_command(hass, cmd)
 
@@ -112,6 +112,26 @@ def ws_subscribe(hass: HomeAssistant, connection: websocket_api.ActiveConnection
 
     connection.subscriptions[msg["id"]] = hass.bus.async_listen(EVENT_UPDATED, _forward)
     connection.send_result(msg["id"])
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): f"{DOMAIN}/home/settings",
+    vol.Optional("ipma_area"): vol.Any(None, vol.Match(r"^[A-Z]{3}$")),
+    vol.Optional("hidden"): [str],
+    vol.Optional("hidden_rooms"): [str],
+    vol.Optional("room_order"): [str],
+})
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_home_settings(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+    """Settings of the house shared by every dashboard (the IPMA warning area, hidden devices and rooms)."""
+    home = _data(hass)["home"]
+    for key in ("ipma_area", "hidden", "hidden_rooms", "room_order"):
+        if key in msg:
+            home[key] = msg[key]
+    await hass.data[DOMAIN]["save"]()
+    hass.bus.async_fire(EVENT_UPDATED)
+    connection.send_result(msg["id"], {"settings": home})
 
 
 # ---------- the screen asking who it is ----------

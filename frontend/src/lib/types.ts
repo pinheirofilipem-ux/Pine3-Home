@@ -51,6 +51,7 @@ export interface Home {
   weather: string | null;
   persons: string[];
   version: string;
+  settings?: { ipma_area?: string | null };
 }
 
 export interface Me {
@@ -74,3 +75,12 @@ export const STYLE_NAMES: Record<Style, string> = {
 export const DOCK_NAMES: Record<DockPlacement, string> = { left: "À esquerda", bottom: "Em baixo" };
 
 export const THEME_NAMES: Record<string, string> = { grafite: "Grafite (escuro)", claro: "Claro", auto: "Automático (pôr do sol)" };
+
+// IPMA warning areas (idAreaAviso) for the weather widget.
+export const IPMA_AREAS: Record<string, string> = {
+  AVR: "Aveiro", BJA: "Beja", BRG: "Braga", BGC: "Bragança", CBO: "Castelo Branco", CBR: "Coimbra", EVR: "Évora",
+  FAR: "Faro", GDA: "Guarda", LRA: "Leiria", LSB: "Lisboa", PTG: "Portalegre", PTO: "Porto", STM: "Santarém",
+  STB: "Setúbal", VCT: "Viana do Castelo", VRL: "Vila Real", VIS: "Viseu",
+  MCN: "Madeira · Costa Norte", MCS: "Madeira · Costa Sul", MRM: "Madeira · Regiões Montanhosas", MPS: "Porto Santo",
+  AOR: "Açores · Grupo Oriental", ACE: "Açores · Grupo Central", AOC: "Açores · Grupo Ocidental",
+};

@@ -4,7 +4,7 @@ import {
   mdiTextureBox, mdiThermometer, mdiLightbulbOutline, mdiShieldHomeOutline, mdiCreationOutline, mdiPlay, mdiPause,
   mdiSkipNext, mdiMinus, mdiPlus, mdiClose, mdiChevronLeft, mdiLock, mdiLockOpenVariant, mdiPower, mdiFan,
   mdiRobotVacuum, mdiBlindsHorizontal, mdiPowerSocketEu, mdiToggleSwitchOutline, mdiGauge, mdiWeatherPartlyCloudy,
-  mdiTelevision, mdiMotionSensor, mdiWindowOpenVariant,
+  mdiTelevision, mdiMotionSensor, mdiWindowOpenVariant, mdiAlertOutline,
 } from "@mdi/js";
 
 export const ICONS = {
@@ -34,6 +34,7 @@ export const ICONS = {
   motion: mdiMotionSensor,
   window: mdiWindowOpenVariant,
   room: mdiTextureBox,
+  alert: mdiAlertOutline,
 };
 
 // Room icons chosen by the integration (discovery.ROOM_ICONS) -> paths.

@@ -113,3 +113,13 @@ async def test_dashboards(hass: HomeAssistant, pine3, hass_ws_client) -> None:
     assert len((await admin.receive_json())["result"]["dashboards"]) == 1
     await admin.send_json({"id": 5, "type": "pine3_home/dashboards/remove", "dashboard_id": "casa"})
     assert (await admin.receive_json())["error"]["code"] == "last_dashboard"
+
+
+async def test_home_settings(hass: HomeAssistant, pine3, hass_ws_client) -> None:
+    admin = await hass_ws_client(hass)
+    await admin.send_json({"id": 1, "type": "pine3_home/home/settings", "ipma_area": "LSB"})
+    assert (await admin.receive_json())["result"]["settings"]["ipma_area"] == "LSB"
+    await admin.send_json({"id": 2, "type": "pine3_home/home"})
+    assert (await admin.receive_json())["result"]["settings"]["ipma_area"] == "LSB"
+    await admin.send_json({"id": 3, "type": "pine3_home/home/settings", "ipma_area": "lisboa"})
+    assert not (await admin.receive_json())["success"]

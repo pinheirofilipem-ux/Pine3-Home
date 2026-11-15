@@ -2,7 +2,7 @@
 import type { HassEntities, HassEntity } from "home-assistant-js-websocket";
 import type { Device, Home, Room } from "../lib/types";
 
-export type Kind = "room-lights" | "light" | "climate" | "weather" | "lock" | "cover" | "media" | "vacuum" | "scenes" | "fan" | "switch" | "outlet" | "sensor" | "binary";
+export type Kind = "room-lights" | "scene" | "camera" | "light" | "climate" | "weather" | "lock" | "cover" | "media" | "vacuum" | "scenes" | "fan" | "switch" | "outlet" | "sensor" | "binary";
 export type Size = "s" | "m" | "l" | "xl"; // 1x1, 2x1, 2x2, 3x2 on a 6-column grid
 
 export interface Widget {
@@ -46,13 +46,13 @@ export function avgBrightness(ids: string[], e: HassEntities): number {
 
 const KIND_FOR: Record<string, Kind> = {
   light: "light", climate: "climate", lock: "lock", cover: "cover", media_player: "media", vacuum: "vacuum", fan: "fan",
-  switch: "switch", input_boolean: "switch", outlet: "outlet", sensor: "sensor", binary_sensor: "binary",
+  switch: "switch", input_boolean: "switch", outlet: "outlet", sensor: "sensor", binary_sensor: "binary", camera: "camera",
 };
 
 export function deviceWidget(d: Device, room?: Room): Widget | null {
   const kind = KIND_FOR[(d.kind as string) ?? domainOf(d.id)] ?? KIND_FOR[domainOf(d.id)];
   if (!kind) return null;
-  const size: Size = kind === "climate" ? "l" : kind === "media" ? "m" : "s";
+  const size: Size = kind === "climate" ? "l" : kind === "media" || kind === "camera" ? "m" : "s";
   return { key: d.id, kind, size, name: d.name, sub: room?.name, entity: d.id, room };
 }
 
@@ -88,7 +88,7 @@ export const CATEGORIES: Array<{ id: string; name: string; kinds: Kind[] }> = [
   { id: "climate", name: "Clima", kinds: ["climate", "fan"] },
   { id: "covers", name: "Estores", kinds: ["cover"] },
   { id: "media", name: "Média", kinds: ["media"] },
-  { id: "other", name: "Outros", kinds: ["switch", "outlet", "lock", "vacuum", "sensor", "binary"] },
+  { id: "other", name: "Outros", kinds: ["switch", "outlet", "lock", "vacuum", "sensor", "binary", "camera"] },
 ];
 
 export function roomWidgets(room: Room): Widget[] {
@@ -113,3 +113,42 @@ export function summary(home: Home, e: HassEntities) {
 }
 
 export const fmt = (n: number, digits = 1) => n.toLocaleString("pt-PT", { maximumFractionDigits: digits });
+
+const OPENINGS = ["door", "window", "garage_door", "opening"];
+const visibleDevices = (home: Home) =>
+  home.rooms.filter((r) => !r.hidden).flatMap((r) => r.devices.filter((d) => !d.hidden).map((d) => ({ d, r })));
+
+/** Clima: thermostats, fans, the weather and each room's temperature and humidity (with a 24 h chart). */
+export function climateWidgets(home: Home, e: HassEntities): Widget[] {
+  const out: Widget[] = [];
+  const all = visibleDevices(home);
+  all.filter(({ d }) => domainOf(d.id) === "climate").forEach(({ d, r }) => out.push({ key: d.id, kind: "climate", size: "l", name: d.name, sub: r.name, entity: d.id, room: r }));
+  if (home.weather && e[home.weather]) out.push({ key: home.weather, kind: "weather", size: "l", name: "Tempo", entity: home.weather });
+  all.filter(({ d }) => domainOf(d.id) === "fan").forEach(({ d, r }) => out.push({ key: d.id, kind: "fan", size: "s", name: d.name, sub: r.name, entity: d.id, room: r }));
+  home.rooms.filter((r) => !r.hidden).forEach((r) => {
+    if (r.temperature && e[r.temperature]) out.push({ key: `t-${r.id}`, kind: "sensor", size: "s", name: r.name, sub: "temperatura", entity: r.temperature, room: r });
+    if (r.humidity && e[r.humidity]) out.push({ key: `h-${r.id}`, kind: "sensor", size: "s", name: r.name, sub: "humidade", entity: r.humidity, room: r });
+  });
+  return out;
+}
+
+/** Segurança: locks first, then what is open, then the rest of the doors, windows and motion sensors, then cameras. */
+export function securityWidgets(home: Home, e: HassEntities): Widget[] {
+  const all = visibleDevices(home);
+  const locks = all.filter(({ d }) => domainOf(d.id) === "lock");
+  const sensors = all.filter(({ d }) => domainOf(d.id) === "binary_sensor" && [...OPENINGS, "motion", "occupancy", "presence", "moisture", "smoke", "gas"].includes(e[d.id]?.attributes.device_class as string));
+  sensors.sort((a, b) => Number(e[b.d.id]?.state === "on") - Number(e[a.d.id]?.state === "on"));
+  const cams = all.filter(({ d }) => domainOf(d.id) === "camera");
+  return [
+    ...locks.map(({ d, r }): Widget => ({ key: d.id, kind: "lock", size: "s", name: d.name, sub: r.name, entity: d.id, room: r })),
+    ...sensors.map(({ d, r }): Widget => ({ key: d.id, kind: "binary", size: "s", name: d.name, sub: r.name, entity: d.id, room: r })),
+    ...cams.map(({ d, r }): Widget => ({ key: d.id, kind: "camera", size: "m", name: d.name, sub: r.name, entity: d.id, room: r })),
+  ];
+}
+
+/** Cenas: every scene and script as a large button. */
+export function sceneWidgets(home: Home, e: HassEntities): Widget[] {
+  return [...home.scenes, ...home.scripts]
+    .filter((id) => e[id])
+    .map((id) => ({ key: id, kind: "scene" as Kind, size: "s" as Size, name: (e[id].attributes.friendly_name as string) ?? id, entity: id }));
+}

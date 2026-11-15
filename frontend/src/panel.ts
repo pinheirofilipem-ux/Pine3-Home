@@ -2,8 +2,8 @@
 import { LitElement, html, css, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { base } from "./lib/base";
-import { DOCK_NAMES, STYLE_NAMES, THEME_NAMES } from "./lib/types";
-import type { Dashboard, DockPlacement, PendingCode, Screen, Style } from "./lib/types";
+import { DOCK_NAMES, IPMA_AREAS, STYLE_NAMES, THEME_NAMES } from "./lib/types";
+import type { Dashboard, DockPlacement, Home, PendingCode, Screen, Style } from "./lib/types";
 
 interface Hass {
   callWS<T>(msg: Record<string, unknown>): Promise<T>;
@@ -26,6 +26,7 @@ export class Pine3HomePanel extends LitElement {
   @state() private screenDash = "";
   @state() private message: { kind: "ok" | "bad"; text: string } | null = null;
   @state() private busy = false;
+  @state() private ipmaArea: string | null = null;
   private loaded = false;
   private timer?: number;
 
@@ -59,6 +60,8 @@ export class Pine3HomePanel extends LitElement {
     this.dashboards = d.dashboards;
     this.styles = d.styles;
     if (!this.screenDash && d.dashboards.length) this.screenDash = d.dashboards[0].id;
+    const home = await this.hass.callWS<Home>({ type: "pine3_home/home" });
+    this.ipmaArea = home.settings?.ipma_area ?? null;
     if (this.admin) {
       const s = await this.hass.callWS<{ screens: Screen[] }>({ type: "pine3_home/screens" });
       this.screens = s.screens;
@@ -157,6 +160,13 @@ export class Pine3HomePanel extends LitElement {
     });
   }
 
+  private setIpmaArea(area: string): Promise<void> {
+    return this.run(async () => {
+      await this.hass!.callWS({ type: "pine3_home/home/settings", ipma_area: area || null });
+      this.ipmaArea = area || null;
+    }, area ? `Avisos do IPMA: ${IPMA_AREAS[area]}.` : "Avisos do IPMA desligados.");
+  }
+
   private dashName(id: string): string {
     return this.dashboards.find((d) => d.id === id)?.name ?? id;
   }
@@ -252,6 +262,18 @@ export class Pine3HomePanel extends LitElement {
             </li>`,
           )}
         </ul>
+      </section>
+      <section class="pane">
+        <h2>Casa</h2>
+        <div class="pair">
+          <label>Avisos do IPMA
+            <select ?disabled=${!this.admin} @change=${(e: Event) => this.setIpmaArea((e.target as HTMLSelectElement).value)}>
+              <option value="" ?selected=${!this.ipmaArea}>Sem avisos</option>
+              ${Object.entries(IPMA_AREAS).map(([k, n]) => html`<option value=${k} ?selected=${k === this.ipmaArea}>${n}</option>`)}
+            </select>
+          </label>
+        </div>
+        <p class="muted">Os avisos aparecem no cartão do tempo de todos os painéis.</p>
       </section>
       <footer class="muted">Painel em uso nos ecrãs: ${this.screens.map((s) => `${s.name} → ${this.dashName(s.dashboard)}`).join(" · ") || "—"}</footer>
     `;
