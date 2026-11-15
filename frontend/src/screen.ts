@@ -14,6 +14,7 @@ import {
 import { base } from "./lib/base";
 import { pairStatus, startPairing, storeToken, storedToken, type PairStart } from "./lib/pairing";
 import "./vidro/vidro";
+import "./vidro/bento";
 import type { Pine3Vidro } from "./vidro/vidro";
 import { applyBrightness, bridge, onWallpanel } from "./lib/wallpanel";
 import type { Home, Me } from "./lib/types";
@@ -81,7 +82,7 @@ export class Pine3Screen extends LitElement {
 
   // ---------- ambient face ----------
   private get vidro(): Pine3Vidro | null {
-    return this.renderRoot.querySelector("pine3-vidro");
+    return this.renderRoot.querySelector("pine3-vidro, pine3-bento");
   }
 
   private activity(e?: Event): void {
@@ -208,10 +209,17 @@ export class Pine3Screen extends LitElement {
   private renderReady() {
     const me = this.me!;
     if (!this.home || !this.conn) return html`<main class="center"><p class="muted">A carregar a casa…</p></main>`;
-    // Phase 1 ships Vidro; the other styles fall back to it until they arrive.
+    const canEdit = me.is_admin || me.dashboard.screen_edit !== false;
+    const wp = bridge() !== null;
+    // the styles that exist so far; the others show Vidro until they arrive
+    if (me.dashboard.style === "bento") {
+      return html`<pine3-bento .home=${this.home} .entities=${this.entities} .dashboard=${me.dashboard} .conn=${this.conn}
+        .screenName=${me.screen?.name ?? ""} ?ambient=${this.ambient} .wallpanel=${wp} ?canEdit=${canEdit}></pine3-bento>`;
+    }
     return html`<pine3-vidro .home=${this.home} .entities=${this.entities} .dashboard=${me.dashboard} .conn=${this.conn}
-      .screenName=${me.screen?.name ?? ""} ?ambient=${this.ambient} .wallpanel=${bridge() !== null} ?canEdit=${me.is_admin || me.dashboard.screen_edit !== false}></pine3-vidro>`;
+      .screenName=${me.screen?.name ?? ""} ?ambient=${this.ambient} .wallpanel=${wp} ?canEdit=${canEdit}></pine3-vidro>`;
   }
+
 
   render() {
     switch (this.phase) {

@@ -86,6 +86,9 @@ export const STYLE_NAMES: Record<Style, string> = {
   lente: "Lente",
 };
 
+/** The styles that exist so far; the others show Vidro until they arrive. */
+export const READY_STYLES: Style[] = ["vidro", "bento"];
+
 export const DOCK_NAMES: Record<DockPlacement, string> = { left: "À esquerda", bottom: "Em baixo" };
 
 export const THEME_NAMES: Record<string, string> = { grafite: "Grafite (escuro)", claro: "Claro", auto: "Automático (pôr do sol)" };
