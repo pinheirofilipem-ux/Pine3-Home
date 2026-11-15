@@ -13,7 +13,7 @@ import {
 } from "home-assistant-js-websocket";
 import { base } from "./lib/base";
 import { pairStatus, startPairing, storeToken, storedToken, type PairStart } from "./lib/pairing";
-import { STYLE_NAMES } from "./lib/types";
+import "./vidro/vidro";
 import type { Home, Me } from "./lib/types";
 
 type Phase = "starting" | "pairing" | "connecting" | "ready" | "error";
@@ -153,32 +153,10 @@ export class Pine3Screen extends LitElement {
 
   private renderReady() {
     const me = this.me!;
-    const rooms = (this.home?.rooms ?? []).filter((r) => !r.hidden);
-    const on = (ids: string[]) => ids.filter((id) => this.entities[id]?.state === "on").length;
-    const time = this.now.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
-    const date = this.now.toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" });
-    return html`<main class="home dock-${me.dashboard.dock}">
-      <header>
-        <div>
-          <div class="clock">${time}</div>
-          <div class="muted">${date}</div>
-        </div>
-        <div class="who muted">
-          ${me.screen?.name ?? "Ecrã"} · ${me.dashboard.name} · ${STYLE_NAMES[me.dashboard.style] ?? me.dashboard.style}
-        </div>
-      </header>
-      <section class="rooms">
-        ${rooms.map((r) => {
-          const lights = r.devices.map((d) => d.id).filter((id) => id.startsWith("light."));
-          return html`<div class="pane room">
-            <strong>${r.name}</strong>
-            <span class="muted">${r.devices.length} dispositivos</span>
-            <span class="muted">${lights.length ? `${on(lights)}/${lights.length} luzes acesas` : ""}${r.temperature && this.entities[r.temperature] ? ` · ${this.entities[r.temperature].state}°` : ""}</span>
-          </div>`;
-        })}
-      </section>
-      <p class="muted small foot">Fase 0 · o estilo ${STYLE_NAMES[me.dashboard.style]} chega na próxima versão · v${me.version}</p>
-    </main>`;
+    if (!this.home || !this.conn) return html`<main class="center"><p class="muted">A carregar a casa…</p></main>`;
+    // Phase 1 ships Vidro; the other styles fall back to it until they arrive.
+    return html`<pine3-vidro .home=${this.home} .entities=${this.entities} .dashboard=${me.dashboard} .conn=${this.conn}
+      .screenName=${me.screen?.name ?? ""}></pine3-vidro>`;
   }
 
   render() {
@@ -258,34 +236,6 @@ export class Pine3Screen extends LitElement {
       }
       .bad {
         color: var(--p3-bad);
-      }
-      header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-        gap: 16px;
-        margin-bottom: 24px;
-      }
-      .clock {
-        font-size: 3.5rem;
-        font-weight: 300;
-        letter-spacing: -0.03em;
-        font-variant-numeric: tabular-nums;
-      }
-      .rooms {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 14px;
-      }
-      .room {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        padding: 16px 18px;
-        min-height: 96px;
-      }
-      .foot {
-        margin-top: 24px;
       }
     `,
   ];

@@ -1,0 +1,115 @@
+// Turns the home model and live states into Vidro widgets.
+import type { HassEntities, HassEntity } from "home-assistant-js-websocket";
+import type { Device, Home, Room } from "../lib/types";
+
+export type Kind = "room-lights" | "light" | "climate" | "weather" | "lock" | "cover" | "media" | "vacuum" | "scenes" | "fan" | "switch" | "outlet" | "sensor" | "binary";
+export type Size = "s" | "m" | "l" | "xl"; // 1x1, 2x1, 2x2, 3x2 on a 6-column grid
+
+export interface Widget {
+  key: string;
+  kind: Kind;
+  size: Size;
+  name: string;
+  sub?: string;
+  entity?: string; // the main entity
+  entities?: string[]; // room lights, scenes
+  room?: Room;
+}
+
+export const domainOf = (id: string) => id.split(".")[0];
+export const isOn = (s?: HassEntity) => !!s && !["off", "unavailable", "unknown", "closed", "locked", "idle", "standby", "docked"].includes(s.state);
+export const unavailable = (s?: HassEntity) => !s || s.state === "unavailable";
+
+export function brightness(s?: HassEntity): number {
+  if (!s || s.state !== "on") return 0;
+  const b = s.attributes.brightness as number | undefined;
+  return b == null ? 100 : Math.max(1, Math.round((b / 255) * 100));
+}
+
+/** Light colour for the art and the fill, from the light's colour or its colour temperature. */
+export function lightColor(s?: HassEntity): string {
+  const rgb = s?.attributes.rgb_color as [number, number, number] | undefined;
+  const mode = s?.attributes.color_mode as string | undefined;
+  if (rgb && mode && !["color_temp", "brightness", "onoff", "white"].includes(mode)) return `rgb(${rgb.join(",")})`;
+  const k = s?.attributes.color_temp_kelvin as number | undefined;
+  if (k) return k >= 5000 ? "#e6f0ff" : k >= 3800 ? "#fff1d6" : "#ffcf8a";
+  return "#ffcf8a";
+}
+
+export const roomLights = (r: Room) => r.devices.filter((d) => domainOf(d.id) === "light" && !d.hidden).map((d) => d.id);
+
+export function avgBrightness(ids: string[], e: HassEntities): number {
+  const on = ids.filter((id) => e[id]?.state === "on");
+  if (!on.length) return 0;
+  return Math.round(on.reduce((a, id) => a + brightness(e[id]), 0) / on.length);
+}
+
+const KIND_FOR: Record<string, Kind> = {
+  light: "light", climate: "climate", lock: "lock", cover: "cover", media_player: "media", vacuum: "vacuum", fan: "fan",
+  switch: "switch", input_boolean: "switch", outlet: "outlet", sensor: "sensor", binary_sensor: "binary",
+};
+
+export function deviceWidget(d: Device, room?: Room): Widget | null {
+  const kind = KIND_FOR[(d.kind as string) ?? domainOf(d.id)] ?? KIND_FOR[domainOf(d.id)];
+  if (!kind) return null;
+  const size: Size = kind === "climate" ? "l" : kind === "media" ? "m" : "s";
+  return { key: d.id, kind, size, name: d.name, sub: room?.name, entity: d.id, room };
+}
+
+/** The "Casa" view: the house at a glance, built automatically. */
+export function homeWidgets(home: Home, e: HassEntities): Widget[] {
+  const rooms = home.rooms.filter((r) => !r.hidden);
+  const all = rooms.flatMap((r) => r.devices.filter((d) => !d.hidden).map((d) => ({ d, r })));
+  const of = (k: string) => all.filter(({ d }) => ((d.kind as string) ?? domainOf(d.id)) === k);
+  const out: Widget[] = [];
+
+  rooms.forEach((r, i) => {
+    const lights = roomLights(r);
+    if (lights.length) out.push({ key: `room-${r.id}`, kind: "room-lights", size: i === 0 ? "m" : "s", name: r.name, entities: lights, room: r });
+  });
+  of("climate").forEach(({ d, r }, i) => out.push({ key: d.id, kind: "climate", size: i === 0 ? "l" : "m", name: d.name, sub: r.name, entity: d.id, room: r }));
+  if (home.weather && e[home.weather]) out.push({ key: home.weather, kind: "weather", size: "l", name: "Tempo", entity: home.weather });
+  of("lock").forEach(({ d, r }) => out.push({ key: d.id, kind: "lock", size: "s", name: d.name, sub: r.name, entity: d.id, room: r }));
+  of("cover").forEach(({ d, r }) => out.push({ key: d.id, kind: "cover", size: "s", name: d.name, sub: r.name, entity: d.id, room: r }));
+  // media: what is playing first, then the rest
+  of("media_player")
+    .sort((a, b) => Number(e[b.d.id]?.state === "playing") - Number(e[a.d.id]?.state === "playing"))
+    .slice(0, 2)
+    .forEach(({ d, r }) => out.push({ key: d.id, kind: "media", size: "m", name: d.name, sub: r.name, entity: d.id, room: r }));
+  of("vacuum").forEach(({ d, r }) => out.push({ key: d.id, kind: "vacuum", size: "s", name: d.name, sub: r.name, entity: d.id, room: r }));
+  if (home.scenes.length) out.push({ key: "scenes", kind: "scenes", size: "m", name: "Cenas", entities: home.scenes.slice(0, 6) });
+  return out;
+}
+
+/** A room's view, grouped by category for the filter chips. */
+export const CATEGORIES: Array<{ id: string; name: string; kinds: Kind[] }> = [
+  { id: "all", name: "Tudo", kinds: [] },
+  { id: "lights", name: "Luzes", kinds: ["light"] },
+  { id: "climate", name: "Clima", kinds: ["climate", "fan"] },
+  { id: "covers", name: "Estores", kinds: ["cover"] },
+  { id: "media", name: "Média", kinds: ["media"] },
+  { id: "other", name: "Outros", kinds: ["switch", "outlet", "lock", "vacuum", "sensor", "binary"] },
+];
+
+export function roomWidgets(room: Room): Widget[] {
+  return room.devices.filter((d) => !d.hidden).map((d) => deviceWidget(d, room)).filter((w): w is Widget => !!w);
+}
+
+/** Header chips: lights on, open doors/unlocked locks, temperature range. */
+export function summary(home: Home, e: HassEntities) {
+  const devices = home.rooms.filter((r) => !r.hidden).flatMap((r) => r.devices);
+  const lightsOn = devices.filter((d) => domainOf(d.id) === "light" && e[d.id]?.state === "on").length;
+  const unlocked = devices.filter((d) => domainOf(d.id) === "lock" && e[d.id]?.state === "unlocked").length;
+  const open = devices.filter((d) => domainOf(d.id) === "binary_sensor" && ["door", "window", "garage_door", "opening"].includes(e[d.id]?.attributes.device_class as string) && e[d.id]?.state === "on").length;
+  const temps = home.rooms
+    .map((r) => (r.temperature ? parseFloat(e[r.temperature]?.state ?? "") : NaN))
+    .filter((t) => !Number.isNaN(t));
+  return {
+    lightsOn,
+    alerts: unlocked + open,
+    alertText: unlocked ? `${unlocked} destrancada${unlocked > 1 ? "s" : ""}` : open ? `${open} aberta${open > 1 ? "s" : ""}` : "tudo fechado",
+    temp: temps.length ? `${Math.round(Math.min(...temps))}–${Math.round(Math.max(...temps))}°` : null,
+  };
+}
+
+export const fmt = (n: number, digits = 1) => n.toLocaleString("pt-PT", { maximumFractionDigits: digits });
