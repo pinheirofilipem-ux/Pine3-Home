@@ -84,7 +84,6 @@ export class Pine3Editorial extends Pine3Vidro {
     const t = w?.attributes.temperature as number | undefined;
     const top = this.warnings[0];
     const scenes = [...this.home.scenes, ...this.home.scripts].filter((id) => this.entities[id]).slice(0, 4);
-    const home = this.home.persons.map((id) => this.entities[id]).filter((p) => p?.state === "home");
     return html`<div class="ed">
       <div class="left">
         <div class="ttl">${time[0]}<em>:</em>${time[1]}</div>
@@ -96,7 +95,6 @@ export class Pine3Editorial extends Pine3Vidro {
         <div class="meta">
           ${w ? html`<div>Lá fora<b>${t != null ? `${Math.round(t)}°, ` : ""}${this.weatherWord(w.state)}</b></div>` : nothing}
           ${top ? html`<div class="warnm">Aviso ${LEVELS[top.awarenessLevelID] ?? ""}<b>${top.awarenessTypeName.toLowerCase()}</b></div>` : nothing}
-          ${home.length ? html`<div>Em casa<b>${home.map((p) => ((p!.attributes.friendly_name as string) ?? "").split(" ")[0]).join(", ")}</b></div>` : nothing}
         </div>
       </div>
       ${this.renderList(false)}

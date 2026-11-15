@@ -9,7 +9,7 @@ import { ICONS, roomIcon } from "./icons";
 import { album, blind, fanArt, lightArt, lockArt, plugArt, robot, sceneArt, spark, thermo, weatherArt } from "./art";
 import { DEVICE_TYPES, TYPES_FOR, autoType, type DeviceType } from "../lib/devtypes";
 import {
-  CATEGORIES, addable, arrange, sizesFor, avgBrightness, brightness, climateWidgets, domainOf, fmt, homeWidgets, sceneWidgets, securityWidgets, isOn, lightColor, roomLights, roomWidgets, summary, unavailable,
+  CATEGORIES, addable, arrange, sizesFor, avgBrightness, brightness, climateWidgets, lightsWidgets, domainOf, fmt, homeWidgets, sceneWidgets, securityWidgets, isOn, lightColor, roomLights, roomWidgets, summary, unavailable,
   type Widget,
 } from "./model";
 import { vidroStyles } from "./styles";
@@ -31,6 +31,7 @@ const HISTORY_TTL = 10 * 60_000;
 const IPMA_TTL = 10 * 60_000;
 /** Views that aren't rooms. */
 const VIEWS = [
+  { id: "@luzes", name: "Luzes", icon: ICONS.bulb },
   { id: "@clima", name: "Clima", icon: ICONS.therm },
   { id: "@seguranca", name: "Segurança", icon: ICONS.shield },
   { id: "@cenas", name: "Cenas", icon: ICONS.spark },
@@ -56,6 +57,14 @@ interface Press {
   dragging: boolean;
   long: boolean;
   timer: number;
+}
+
+interface DayForecast {
+  datetime: string;
+  temperature: number;
+  templow?: number;
+  condition?: string;
+  precipitation_probability?: number;
 }
 
 interface HourForecast {
@@ -98,6 +107,7 @@ export class Pine3Vidro extends LitElement {
   @state() protected drag: { key: string; value: number } | null = null;
   @state() protected now = new Date();
   @state() protected hourly: HourForecast[] = [];
+  @state() protected daily: DayForecast[] = [];
   @state() protected warnings: IpmaWarning[] = [];
   @state() protected history: Record<string, number[]> = {};
   @state() protected flash: string | null = null;
@@ -144,9 +154,19 @@ export class Pine3Vidro extends LitElement {
       const r = await this.conn.sendMessagePromise<{ response: Record<string, { forecast: HourForecast[] }> }>({
         type: "call_service", domain: "weather", service: "get_forecasts", service_data: { type: "hourly" }, target: { entity_id: entity }, return_response: true,
       });
-      this.hourly = (r.response?.[entity]?.forecast ?? []).slice(1, 7).filter((_, i) => i % 2 === 0);
+      // the next 6 hours
+      this.hourly = (r.response?.[entity]?.forecast ?? []).filter((f) => new Date(f.datetime).getTime() > Date.now() - 30 * 60_000).slice(0, 6);
     } catch {
       this.hourly = []; // a weather entity without hourly forecasts
+    }
+    try {
+      const r = await this.conn.sendMessagePromise<{ response: Record<string, { forecast: DayForecast[] }> }>({
+        type: "call_service", domain: "weather", service: "get_forecasts", service_data: { type: "daily" }, target: { entity_id: entity }, return_response: true,
+      });
+      // the next 5 days
+      this.daily = (r.response?.[entity]?.forecast ?? []).slice(0, 5);
+    } catch {
+      this.daily = [];
     }
   }
 
@@ -428,10 +448,10 @@ export class Pine3Vidro extends LitElement {
 
   protected tap(w: Widget): void {
     switch (w.kind) {
-      case "room-lights": {
-        const anyOn = w.entities!.some((id) => this.entities[id]?.state === "on");
-        return this.call("light", anyOn ? "turn_off" : "turn_on", w.entities!);
-      }
+      case "room-lights":
+        // a room's card opens the room; its lights switch on its own button
+        if (w.room) this.openRoom(w.room.id);
+        return;
       case "climate":
       case "weather":
       case "sensor":
@@ -537,33 +557,44 @@ export class Pine3Vidro extends LitElement {
           </button>`;
         })}
       </div>
-      <span class="sep"></span>
-      ${VIEWS.filter((v) => this.viewWidgets(v.id).length).map((v) => {
-        const badge = v.id === "@seguranca" ? summary(this.home, this.entities).alerts : 0;
-        return html`<button class=${classMap({ di: true, on: this.view === v.id })} @click=${() => this.openRoom(v.id)} aria-label=${v.name}>
-          ${icon(v.icon)}<span class="lb">${v.name}</span>${badge ? html`<span class="bdg alert">${badge}</span>` : nothing}
-        </button>`;
-      })}
       ${this.renderGear()}
     </nav>`;
   }
 
+  /** The next 6 hours: hour, temperature and the chance of rain. */
+  protected renderHours() {
+    if (!this.hourly.length) return nothing;
+    return html`<div class="hrs">${this.hourly.map((f) => html`<span>${new Date(f.datetime).getHours()}h<b>${Math.round(f.temperature)}°</b>${f.precipitation_probability ? `${f.precipitation_probability}%` : html`&nbsp;`}</span>`)}</div>`;
+  }
+
+  /** The next 5 days: the day, its sky, the high and low and the chance of rain. */
+  protected renderDays(compact: boolean) {
+    if (!this.daily.length) return nothing;
+    return html`<div class=${classMap({ days: true, compact })}>${this.daily.map((f, i) => html`<div class="day">
+      <span class="dn">${i === 0 ? "Hoje" : ((d) => (compact ? d.slice(0, 3) : d))(new Date(f.datetime).toLocaleDateString("pt-PT", { weekday: "long" }).replace("-feira", ""))}</span>
+      ${compact ? nothing : html`<span class="dc">${WEATHER[f.condition ?? ""] ?? f.condition ?? ""}</span>`}
+      <b>${Math.round(f.temperature)}°</b><span class="lo">${f.templow != null ? `${Math.round(f.templow)}°` : ""}</span>
+      ${compact ? nothing : html`<span class="rain">${f.precipitation_probability ? `${f.precipitation_probability}%` : ""}</span>`}
+    </div>`)}</div>`;
+  }
+
+  /** The top of Casa: the time, and shortcuts to the views (Clima, Luzes, Segurança, Cenas). */
   protected renderHeader(title: TemplateResult | string, sub: string, controls: unknown = nothing) {
     const s = summary(this.home, this.entities);
-    const persons = this.home.persons.map((id) => this.entities[id]).filter((p): p is HassEntity => !!p);
+    const chip = (view: string, bg: string, path: string, name: string, small: string) =>
+      this.viewWidgets(view).length
+        ? html`<button class="chip" @click=${() => this.openRoom(view)}><i style=${bg}>${icon(path)}</i><span>${name}<small>${small}</small></span></button>`
+        : nothing;
+    const scenes = this.home.scenes.length + this.home.scripts.length;
     return html`<header class="hdr">
       <div class="t"><span>${sub}</span><b>${title}</b></div>
       <div class="chips">
-        ${this.editing ? nothing : html`${s.temp ? html`<span class="chip"><i style="background:#34c759;color:#06210f">${icon(ICONS.therm)}</i><span>Clima<small>${s.temp}</small></span></span>` : nothing}
-        <span class="chip"><i style="background:#ffcf8a;color:#2a1a04">${icon(ICONS.bulb)}</i><span>Luzes<small>${s.lightsOn ? `${s.lightsOn} acesa${s.lightsOn > 1 ? "s" : ""}` : "apagadas"}</small></span></span>
-        <span class="chip"><i style=${s.alerts ? "background:#ff8a5c;color:#2a0f04" : "background:#5be3a0;color:#06210f"}>${icon(ICONS.shield)}</i><span>Segurança<small>${s.alertText}</small></span></span>
-        ${persons.length
-          ? html`<div class="people">${persons.map((p) => {
-              const pic = p.attributes.entity_picture as string | undefined;
-              const name = (p.attributes.friendly_name as string) ?? p.entity_id;
-              return html`<span class="av" title=${name} style=${pic ? `background-image:url(${pic})` : ""}>${pic ? "" : name[0]}${p.state === "home" ? html`<i></i>` : nothing}</span>`;
-            })}</div>`
-          : nothing}`}
+        ${this.editing
+          ? nothing
+          : html`${chip("@clima", "background:#34c759;color:#06210f", ICONS.therm, "Clima", s.temp ?? "")}
+            ${chip("@luzes", "background:#ffcf8a;color:#2a1a04", ICONS.bulb, "Luzes", s.lightsOn ? `${s.lightsOn} acesa${s.lightsOn > 1 ? "s" : ""}` : "apagadas")}
+            ${chip("@seguranca", s.alerts ? "background:#ff8a5c;color:#2a0f04" : "background:#5be3a0;color:#06210f", ICONS.shield, "Segurança", s.alertText)}
+            ${chip("@cenas", "background:#c9b8ff;color:#1d1530", ICONS.spark, "Cenas", `${scenes} cena${scenes === 1 ? "" : "s"}`)}`}
         ${controls}
       </div>
     </header>`;
@@ -586,6 +617,7 @@ export class Pine3Vidro extends LitElement {
   }
 
   protected viewWidgets(id: string): Widget[] {
+    if (id === "@luzes") return lightsWidgets(this.home);
     if (id === "@clima") return climateWidgets(this.home, this.entities);
     if (id === "@seguranca") return securityWidgets(this.home, this.entities);
     if (id === "@cenas") return sceneWidgets(this.home, this.entities);
@@ -598,11 +630,19 @@ export class Pine3Vidro extends LitElement {
     const widgets = this.arranged(id, auto);
     const editing = this.editing === id;
     const s = summary(this.home, this.entities);
-    const facts = id === "@clima" ? s.temp ?? "" : id === "@seguranca" ? s.alertText : `${widgets.length} cenas e rotinas`;
+    const facts = id === "@luzes" ? (s.lightsOn ? `${s.lightsOn} acesa${s.lightsOn > 1 ? "s" : ""}` : "todas apagadas")
+      : id === "@clima" ? s.temp ?? "" : id === "@seguranca" ? s.alertText : `${widgets.length} cenas e rotinas`;
+    const lights = id === "@luzes" ? auto.flatMap((w) => w.entities ?? []) : [];
     return html`<div class="rtop">
         <button class="back" @click=${() => this.openRoom("home")} aria-label="Voltar à casa">${icon(ICONS.back)}</button>
         <b>${v.name}</b><span>${editing ? "a editar" : facts}</span>
-        <div class="act">${this.editControls(id, auto)}</div>
+        <div class="act">
+          ${lights.length && !editing
+            ? html`<button class="pill" @click=${() => this.call("light", "turn_on", lights)}>${icon(ICONS.bulb)} Acender todas</button>
+              <button class="pill pri" @click=${() => this.call("light", "turn_off", lights)}>Apagar todas</button>`
+            : nothing}
+          ${this.editControls(id, auto)}
+        </div>
       </div>
       ${widgets.length || editing ? html`<div class=${classMap({ grid: true, edit: editing })}>${widgets.map((w) => this.renderWidget(w))}</div>` : html`<p class="empty">Nada para mostrar aqui.</p>`}
       ${this.renderPicker(id, auto)}`;
@@ -679,10 +719,13 @@ export class Pine3Vidro extends LitElement {
       case "room-lights": {
         const on = w.entities!.filter((id) => this.entities[id]?.state === "on");
         const c = on.length ? lightColor(this.entities[on[0]]) : "#ffcf8a";
+        const total = w.entities!.length;
         return {
-          hero: lvl ? `${lvl}%` : "Off", small: on.length ? on.map((id) => this.name(id, w.room)).slice(0, 2).join(" e ") : `${w.entities!.length} luz${w.entities!.length > 1 ? "es" : ""}`,
-          tag: w.entities!.length > 1 ? `${on.length}/${w.entities!.length} luzes` : undefined,
+          hero: lvl ? `${lvl}%` : "Off",
+          small: on.length ? `${total > 1 ? `${on.length}/${total} · ` : ""}${on.map((id) => this.name(id, w.room)).slice(0, 2).join(" e ")}` : `${total} luz${total > 1 ? "es" : ""}`,
           art: lightArt(this.typeOf(on[0] ?? w.entities![0]), lvl ?? 0, c), fill: lvl ? lvl : null, color: rgbOf(c), on: lvl! > 0,
+          extra: html`<button class=${classMap({ pw: true, on: on.length > 0 })} aria-label=${`${on.length ? "Apagar" : "Acender"} as luzes de ${w.name}`}
+            @click=${() => this.call("light", on.length ? "turn_off" : "turn_on", w.entities!)}>${icon(ICONS.power)}</button>`,
         };
       }
       case "light": {
@@ -723,9 +766,7 @@ export class Pine3Vidro extends LitElement {
           extra: top
             ? html`<span class=${`ipma ${top.awarenessLevelID}`}><i></i>Aviso ${LEVELS[top.awarenessLevelID] ?? ""} · ${top.awarenessTypeName.toLowerCase()}${this.warnings.length > 1 ? ` +${this.warnings.length - 1}` : ""}</span>`
             : nothing,
-          ctl: this.hourly.length
-            ? html`<div class="hrs">${this.hourly.map((f) => html`<span>${new Date(f.datetime).getHours()}h<b>${Math.round(f.temperature)}°</b>${f.precipitation_probability ? `${f.precipitation_probability}%` : ""}</span>`)}</div>`
-            : nothing,
+          ctl: html`${this.renderHours()}${w.size === "l" || w.size === "xl" ? this.renderDays(true) : nothing}`,
         };
       }
       case "lock": {
@@ -969,7 +1010,8 @@ export class Pine3Vidro extends LitElement {
         s.attributes.wind_speed != null ? `vento ${fmt(s.attributes.wind_speed as number, 0)} ${s.attributes.wind_speed_unit ?? ""}` : null,
       ].filter(Boolean);
       return html`<div class="bigtemp">${t != null ? `${Math.round(t)}°` : "—"}<small>${[WEATHER[s.state] ?? s.state, ...extra].join(" · ")}</small></div>
-        <div class="hrs">${this.hourly.map((f) => html`<span>${new Date(f.datetime).getHours()}h<b>${Math.round(f.temperature)}°</b>${f.precipitation_probability ? `${f.precipitation_probability}%` : ""}</span>`)}</div>
+        ${this.hourly.length ? html`<span class="k">Próximas 6 horas</span>${this.renderHours()}` : nothing}
+        ${this.daily.length ? html`<span class="k">Próximos 5 dias</span>${this.renderDays(false)}` : nothing}
         ${this.warnings.map((w) => html`<div class=${`warn ${w.awarenessLevelID}`}><b>Aviso ${LEVELS[w.awarenessLevelID] ?? ""} · ${w.awarenessTypeName}</b>
           <span>${when(w.startTime)} → ${when(w.endTime)}</span>${w.text ? html`<p>${w.text}</p>` : nothing}</div>`)}
         ${!this.home.settings?.ipma_area ? html`<p class="hint">Escolhe a área do IPMA no painel Pine3 Home para ver os avisos.</p>` : nothing}`;

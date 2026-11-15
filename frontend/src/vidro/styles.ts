@@ -267,35 +267,77 @@ export const vidroStyles = css`
     font-weight: 400;
     line-height: 1.1;
   }
-  .people {
-    display: flex;
+  button.chip {
+    border: 0;
+    color: inherit;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
   }
-  .av {
-    width: calc(var(--u) * 3.4);
-    height: calc(var(--u) * 3.4);
+  button.chip:active {
+    transform: scale(0.97);
+  }
+  /* a room card's own light switch */
+  .pw {
+    position: absolute;
+    z-index: 3;
+    top: calc(var(--u) * 1.2);
+    right: calc(var(--u) * 1.2);
+    width: calc(var(--u) * 3.6);
+    height: calc(var(--u) * 3.6);
     border-radius: 50%;
+    border: 0;
     display: grid;
     place-items: center;
-    font-weight: 600;
-    font-size: calc(var(--u) * 1.3);
-    color: #1b1206;
-    background: #ffb36b center / cover;
-    margin-left: calc(var(--u) * -0.7);
-    border: calc(var(--u) * 0.2) solid #15181b;
+    font-size: calc(var(--u) * 1.8);
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--fg);
+    cursor: pointer;
+  }
+  .pw.on {
+    background: #ffcf8a;
+    color: #2a1a04;
+  }
+  .days {
     position: relative;
+    z-index: 2;
+    display: grid;
+    gap: calc(var(--u) * 0.4);
+    margin-top: calc(var(--u) * 1);
+    font-size: calc(var(--u) * 1.1);
   }
-  .av:first-child {
-    margin-left: 0;
+  .days .day {
+    display: grid;
+    grid-template-columns: 4.5em 1fr 3em 3em 3em;
+    align-items: baseline;
+    gap: calc(var(--u) * 0.8);
   }
-  .av i {
-    position: absolute;
-    right: calc(var(--u) * -0.15);
-    bottom: calc(var(--u) * -0.15);
-    width: calc(var(--u) * 1);
-    height: calc(var(--u) * 1);
-    border-radius: 50%;
-    background: #34c759;
-    border: calc(var(--u) * 0.2) solid #15181b;
+  .days.compact {
+    grid-template-columns: repeat(5, 1fr);
+    text-align: center;
+    color: var(--muted);
+  }
+  .days.compact .day {
+    display: block;
+  }
+  .days .dn {
+    text-transform: capitalize;
+  }
+  .days.compact b,
+  .days.compact .lo {
+    display: block;
+  }
+  .days b {
+    color: var(--fg);
+    font-weight: 500;
+  }
+  .days .lo,
+  .days .dc,
+  .days .rain {
+    color: var(--muted);
+  }
+  .days .rain {
+    color: #6cc4ff;
   }
   .empty {
     color: var(--muted);
@@ -399,6 +441,13 @@ export const vidroStyles = css`
     width: 65%;
     z-index: 1;
     pointer-events: none;
+  }
+  /* with the forecast below, the sky stays in the top half */
+  .k-weather:has(.hrs) .art {
+    top: 0;
+    bottom: auto;
+    height: 55%;
+    width: 45%;
   }
   .w .fill {
     --fc: 255, 207, 138;

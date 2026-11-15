@@ -137,6 +137,15 @@ export function climateWidgets(home: Home, e: HassEntities): Widget[] {
   return out;
 }
 
+/** Luzes: every room with lights, as a card that opens the room and switches its lights. */
+export function lightsWidgets(home: Home): Widget[] {
+  return home.rooms
+    .filter((r) => !r.hidden)
+    .map((r) => ({ r, lights: roomLights(r) }))
+    .filter(({ lights }) => lights.length)
+    .map(({ r, lights }): Widget => ({ key: `room-${r.id}`, kind: "room-lights", size: "m", name: r.name, entities: lights, room: r }));
+}
+
 /** Segurança: locks first, then what is open, then the rest of the doors, windows and motion sensors, then cameras. */
 export function securityWidgets(home: Home, e: HassEntities): Widget[] {
   const all = visibleDevices(home);
