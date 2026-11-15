@@ -56,6 +56,27 @@ export interface Room {
   humidity: string | null;
   scenes: string[];
   hidden: boolean;
+  /** Every entity of the room (for Definições → Entidades). */
+  entities?: RoomEntity[];
+}
+
+export interface RoomEntity {
+  id: string;
+  name: string;
+  /** The entity a device's tile is drawn from; the others are secondary. */
+  primary: boolean;
+  /** A diagnostic or configuration entity. */
+  category: boolean;
+  ha_hidden: boolean;
+}
+
+export interface HomeSettings {
+  ipma_area?: string | null;
+  hidden?: string[];
+  shown?: string[];
+  hidden_rooms?: string[];
+  room_order?: string[];
+  room_icons?: Record<string, string>;
 }
 
 export interface Home {
@@ -65,7 +86,7 @@ export interface Home {
   weather: string | null;
   persons: string[];
   version: string;
-  settings?: { ipma_area?: string | null };
+  settings?: HomeSettings;
 }
 
 export interface Me {

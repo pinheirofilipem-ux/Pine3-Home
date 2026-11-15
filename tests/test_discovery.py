@@ -212,3 +212,12 @@ async def test_identify_buttons_hidden(hass: HomeAssistant) -> None:
     dev = next(d for d in rooms["Sala"]["devices"] if d["id"] == mp)
     assert mute in dev["members"] and ident not in dev["members"] and pob not in dev["members"]
 
+
+
+async def test_room_settings(hass: HomeAssistant) -> None:
+    h = await _setup_home(hass)
+    sala_id = h["sala"].id
+    home = build_home(hass, {"hidden": [], "hidden_rooms": [sala_id], "room_order": [sala_id], "room_icons": {sala_id: "mdi:television"}})
+    first = home["rooms"][0]
+    # the order, the icon and the hidden flag chosen in Divisões
+    assert first["id"] == sala_id and first["icon"] == "mdi:television" and first["hidden"] is True

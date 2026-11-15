@@ -606,7 +606,7 @@ export class Pine3Vidro extends LitElement {
   }
 
   protected renderRoom(room: Room) {
-    const auto = roomWidgets(room);
+    const auto = roomWidgets(room, this.home.settings?.shown);
     const all = this.arranged(room.id, auto);
     const editing = this.editing === room.id;
     const count = (kinds: string[]) => (kinds.length ? all.filter((w) => kinds.includes(w.kind)).length : all.length);

@@ -8,16 +8,20 @@ import { html as shtml } from "lit/static-html.js";
 import type { Connection, HassEntities } from "home-assistant-js-websocket";
 import {
   mdiPaletteOutline, mdiHomeOutline, mdiTabletDashboard, mdiCogOutline, mdiClose, mdiPlus, mdiWeatherNight,
+  mdiViewGridOutline, mdiFormatListChecks, mdiChevronUp, mdiChevronDown, mdiMagnify,
 } from "@mdi/js";
+import { ROOM_ICON_CHOICES, roomIconPath } from "./vidro/icons";
 import { styleTag, STYLE_SWATCH } from "./lib/styles";
 import {
   AMBIENT_AFTER, AMBIENT_BRIGHTNESS, IPMA_AREAS, READY_STYLES, STYLE_NAMES, THEME_NAMES,
-  type Dashboard, type Home, type PendingCode, type Screen, type Style,
+  type Dashboard, type Home, type HomeSettings, type PendingCode, type Room, type RoomEntity, type Screen, type Style,
 } from "./lib/types";
 
-type Section = "aparencia" | "ambiente" | "casa" | "ecras" | "sistema";
+type Section = "aparencia" | "divisoes" | "entidades" | "ambiente" | "casa" | "ecras" | "sistema";
 const SECTIONS: Array<{ id: Section; name: string; icon: string }> = [
   { id: "aparencia", name: "Aparência", icon: mdiPaletteOutline },
+  { id: "divisoes", name: "Divisões", icon: mdiViewGridOutline },
+  { id: "entidades", name: "Entidades", icon: mdiFormatListChecks },
   { id: "ambiente", name: "Face ambiente", icon: mdiWeatherNight },
   { id: "casa", name: "Casa", icon: mdiHomeOutline },
   { id: "ecras", name: "Ecrãs e painéis", icon: mdiTabletDashboard },
@@ -55,6 +59,10 @@ export class Pine3Settings extends LitElement {
   @state() private pvView = "home";
   /** Each dashboard as it was before these settings first changed it: "Desfazer" puts it back. */
   @state() private original: Record<string, Dashboard> = {};
+  @state() private query = "";
+  @state() private diagnostics = false;
+  /** The room whose icon picker is open in Divisões. */
+  @state() private iconFor: string | null = null;
   private timer?: number;
   private resize?: ResizeObserver;
   private thumbResize?: ResizeObserver;
@@ -180,6 +188,8 @@ export class Pine3Settings extends LitElement {
       <main class="content">
         ${this.message ? html`<p class=${classMap({ msg: true, bad: !this.message.ok })} role="status">${this.message.text}</p>` : nothing}
         ${this.section === "aparencia" ? this.renderAppearance() : nothing}
+        ${this.section === "divisoes" ? this.renderRooms() : nothing}
+        ${this.section === "entidades" ? this.renderEntities() : nothing}
         ${this.section === "ambiente" ? this.renderAmbient() : nothing}
         ${this.section === "casa" ? this.renderHouse() : nothing}
         ${this.section === "ecras" ? this.renderScreens() : nothing}
@@ -273,7 +283,6 @@ export class Pine3Settings extends LitElement {
         <option value="" ?selected=${!area}>Sem avisos</option>
         ${Object.entries(IPMA_AREAS).map(([k, n]) => html`<option value=${k} ?selected=${k === area}>${n}</option>`)}
       </select>
-      <p class="muted soon">As entidades e as divisões (escolher o que aparece, a ordem, o tipo de cada cartão) chegam aqui na próxima versão.</p>
     </section>`;
   }
 
@@ -329,6 +338,99 @@ export class Pine3Settings extends LitElement {
       <div class="row"><span class="grow">Disposição de ${this.dash.name}<small>${layouts.length ? `arrumada à mão em ${layouts.length} vista(s)` : "automática"}</small></span>
         ${layouts.length ? html`<button @click=${() => this.resetLayouts()}>Repor a automática</button>` : nothing}</div>
       <div class="row"><span class="grow">Página dos ecrãs de parede<small>${location.origin}/pine3/ecra</small></span></div>
+    </section>`;
+  }
+
+  // ---------- Divisões and Entidades: settings of the house, shared by every dashboard ----------
+  private get hs(): HomeSettings {
+    return this.home.settings ?? {};
+  }
+
+  /** Save some of the house's settings: shown at once, then saved (every screen updates). */
+  private saveHouse(changes: HomeSettings): Promise<void> {
+    this.home = { ...this.home, settings: { ...this.hs, ...changes } };
+    return this.run(() => this.ws({ type: "pine3_home/home/settings", ...changes }));
+  }
+
+  private renderRooms() {
+    const rooms = this.home.rooms;
+    const hidden = this.hs.hidden_rooms ?? [];
+    const move = (i: number, d: number) => {
+      const j = i + d;
+      if (j < 0 || j >= rooms.length) return;
+      const order = rooms.map((r) => r.id);
+      [order[i], order[j]] = [order[j], order[i]];
+      // the model arrives already ordered: reorder it here too, so the list moves at once
+      this.home = { ...this.home, rooms: order.map((id) => rooms.find((r) => r.id === id)!) };
+      void this.saveHouse({ room_order: order });
+    };
+    return html`<section class="card">
+      <h2>Divisões</h2>
+      <p class="muted">A ordem, o ícone e as divisões que aparecem. Vale para a dock, a Casa e todos os estilos e painéis. As divisões vêm das áreas do Home Assistant.</p>
+      <div class="list">${rooms.map((r, i) => {
+        const shown = !hidden.includes(r.id);
+        return html`<div class=${classMap({ row: true, off: !shown })}>
+          <span class="mv">
+            <button class="ib" aria-label=${`Subir ${r.name}`} ?disabled=${i === 0} @click=${() => move(i, -1)}>${icon(mdiChevronUp)}</button>
+            <button class="ib" aria-label=${`Descer ${r.name}`} ?disabled=${i === rooms.length - 1} @click=${() => move(i, 1)}>${icon(mdiChevronDown)}</button>
+          </span>
+          <button class="ricon" aria-label=${`Ícone de ${r.name}`} aria-expanded=${this.iconFor === r.id} @click=${() => (this.iconFor = this.iconFor === r.id ? null : r.id)}>${icon(roomIconPath(r.icon))}</button>
+          <span class="grow">${r.name}<small>${r.devices.filter((d) => !d.hidden).length} de ${r.devices.length} dispositivos${r.floor ? ` · ${r.floor}` : ""}</small></span>
+          <button class="sw" role="switch" aria-checked=${shown} aria-label=${`Mostrar ${r.name}`}
+            @click=${() => void this.saveHouse({ hidden_rooms: shown ? [...hidden, r.id] : hidden.filter((x) => x !== r.id) })}></button>
+          ${this.iconFor === r.id
+            ? html`<div class="icons">${ROOM_ICON_CHOICES.map((ic) => html`<button class=${classMap({ ib: true, on: ic === r.icon })} aria-label=${ic.replace("mdi:", "")}
+                @click=${() => { this.iconFor = null; void this.saveHouse({ room_icons: { ...(this.hs.room_icons ?? {}), [r.id]: ic } }); }}>${icon(roomIconPath(ic))}</button>`)}</div>`
+            : nothing}
+        </div>`;
+      })}</div>
+    </section>`;
+  }
+
+  /** Is this entity on the dashboards? A device's main entity unless hidden; another only when chosen. */
+  private visible(e: RoomEntity): boolean {
+    return e.primary ? !(this.hs.hidden ?? []).includes(e.id) : (this.hs.shown ?? []).includes(e.id);
+  }
+
+  private toggleEntity(e: RoomEntity): Promise<void> {
+    const hidden = this.hs.hidden ?? [];
+    const shown = this.hs.shown ?? [];
+    if (e.primary) return this.saveHouse({ hidden: hidden.includes(e.id) ? hidden.filter((x) => x !== e.id) : [...hidden, e.id] });
+    return this.saveHouse({ shown: shown.includes(e.id) ? shown.filter((x) => x !== e.id) : [...shown, e.id] });
+  }
+
+  private renderEntities() {
+    const q = this.query.trim().toLowerCase();
+    const match = (e: RoomEntity) => (this.diagnostics || !e.category) && (!q || `${e.name} ${e.id}`.toLowerCase().includes(q));
+    const rooms = this.home.rooms
+      .map((r) => ({ r, ents: (r.entities ?? []).filter(match).sort((a, b) => Number(b.primary) - Number(a.primary)) }))
+      .filter((x) => x.ents.length);
+    return html`<section class="card">
+        <h2>Entidades</h2>
+        <p class="muted">O que aparece nos painéis. Cada dispositivo tem um cartão com a sua entidade <b>principal</b>; as <b>secundárias</b> (o consumo de uma tomada, o interruptor de uma TV, um sensor de diagnóstico) podem ter um cartão próprio.</p>
+        <label class="search">${icon(mdiMagnify)}<input type="search" placeholder="Procurar por nome ou entidade" aria-label="Procurar entidade"
+          .value=${this.query} @input=${(e: Event) => (this.query = (e.target as HTMLInputElement).value)} /></label>
+        <div class="row"><span>Mostrar entidades de diagnóstico e configuração</span>
+          <button class="sw" role="switch" aria-checked=${this.diagnostics} aria-label="Mostrar entidades de diagnóstico" @click=${() => (this.diagnostics = !this.diagnostics)}></button></div>
+      </section>
+      ${rooms.length
+        ? rooms.map(({ r, ents }) => this.entityRoom(r, ents))
+        : html`<section class="card"><p class="muted">Nenhuma entidade com "${this.query}".</p></section>`}`;
+  }
+
+  private entityRoom(r: Room, ents: RoomEntity[]) {
+    const all = (r.entities ?? []).filter((e) => this.diagnostics || !e.category);
+    const on = all.filter((e) => this.visible(e)).length;
+    return html`<section class="card">
+      <h3 class="rh">${icon(roomIconPath(r.icon))} ${r.name} <small>${on} de ${all.length} visíveis</small></h3>
+      <div class="list">${ents.map((e) => {
+        const v = this.visible(e);
+        return html`<div class=${classMap({ row: true, off: !v })}>
+          <span class="grow">${e.name}<small class="mono">${e.id}</small></span>
+          <span class=${classMap({ badge: true, sec: !e.primary })}>${e.primary ? "Principal" : e.category ? "Diagnóstico" : "Secundária"}</span>
+          <button class="sw" role="switch" aria-checked=${v} aria-label=${`Mostrar ${e.name}`} @click=${() => this.toggleEntity(e)}></button>
+        </div>`;
+      })}</div>
     </section>`;
   }
 
@@ -816,6 +918,81 @@ export class Pine3Settings extends LitElement {
     }
     .danger {
       color: #ff8b8b;
+    }
+    .row.off .grow {
+      opacity: 0.5;
+    }
+    .mono {
+      font-family: ui-monospace, "Geist Mono", Menlo, monospace;
+      font-size: 0.8rem;
+    }
+    .row > span.mv.mv:first-child {
+      flex: none;
+      min-width: 0;
+    }
+    .mv {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .ib {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      display: grid;
+      place-items: center;
+    }
+    .ib.on {
+      background: #eceef1;
+      color: #17191c;
+    }
+    .ricon {
+      width: 48px;
+      height: 48px;
+      padding: 0;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      font-size: 1.2rem;
+    }
+    .icons {
+      flex-basis: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding-left: 108px;
+    }
+    .search {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0.6rem 1rem;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #9aa1ab;
+    }
+    .search input {
+      flex: 1;
+      border: 0;
+      background: none;
+      outline: none;
+      min-width: 0;
+      color: #eceef1;
+    }
+    .rh {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .rh small {
+      font-weight: 400;
+      font-size: 0.95rem;
+      color: #9aa1ab;
+    }
+    .badge.sec {
+      background: rgba(255, 255, 255, 0.07);
+      color: #9aa1ab;
     }
     .badge {
       font-size: 0.85rem;

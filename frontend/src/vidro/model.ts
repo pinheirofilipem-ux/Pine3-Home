@@ -91,8 +91,13 @@ export const CATEGORIES: Array<{ id: string; name: string; kinds: Kind[] }> = [
   { id: "other", name: "Outros", kinds: ["switch", "outlet", "lock", "vacuum", "sensor", "binary", "camera"] },
 ];
 
-export function roomWidgets(room: Room): Widget[] {
-  return room.devices.filter((d) => !d.hidden).map((d) => deviceWidget(d, room)).filter((w): w is Widget => !!w);
+export function roomWidgets(room: Room, shown: string[] = []): Widget[] {
+  const devices = room.devices.filter((d) => !d.hidden).map((d) => deviceWidget(d, room));
+  // secondary entities the person chose to show as tiles of their own (Definições → Entidades)
+  const extra = (room.entities ?? [])
+    .filter((e) => !e.primary && shown.includes(e.id))
+    .map((e) => deviceWidget({ id: e.id, name: e.name, kind: domainOf(e.id) }, room));
+  return [...devices, ...extra].filter((w): w is Widget => !!w);
 }
 
 /** Header chips: lights on, open doors/unlocked locks, temperature range. */
